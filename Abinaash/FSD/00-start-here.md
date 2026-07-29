@@ -1,11 +1,11 @@
 ---
 title: Start Here — The MERN Map
-emoji: (◕‿◕)
+emoji: T^T
 order: 0
 blurb: What full-stack dev actually is, how the four MERN pieces fit, and the one mental model that makes everything else click.
 ---
 
-# Start Here — The MERN Map (◕‿◕)
+# Start Here — The MERN Map T^T
 
 > "Any application that can be written in JavaScript, will eventually be written in JavaScript." — Atwood's Law. This module is that law happening to you.
 
