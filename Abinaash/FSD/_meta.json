@@ -1,0 +1,8 @@
+{
+  "title": "Full Stack Development",
+  "code": "ET0744",
+  "emoji": "(◕‿◕)",
+  "accent": "ink",
+  "blurb": "The MERN stack, front to back — MongoDB, Express, React, Node.js. From how the web works to shipping a full app with auth.",
+  "tagline": "browser → HTTP → server → database → and back again"
+}
