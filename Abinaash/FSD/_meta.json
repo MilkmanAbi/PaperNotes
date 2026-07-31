@@ -1,0 +1,9 @@
+{
+  "title": "Full Stack Development",
+  "code": "ET0744",
+  "emoji": "(◕‿◕)",
+  "accent": "ink",
+  "blurb": "The MERN stack, front to back. Split into Theory (the why) and Lab (every practical + the Lab Test, done for real).",
+  "tagline": "browser → HTTP → server → database → and back again",
+  "order": 0
+}

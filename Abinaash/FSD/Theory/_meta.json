@@ -1,0 +1,9 @@
+{
+  "title": "Theory",
+  "code": "ET0744",
+  "emoji": "(◕‿◕)",
+  "accent": "ink",
+  "blurb": "The MERN stack concepts and the why behind every layer, from how the web works to auth and deployment.",
+  "tagline": "browser → HTTP → server → database → and back again",
+  "order": 0
+}
