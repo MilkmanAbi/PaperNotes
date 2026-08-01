@@ -1,11 +1,11 @@
 ---
 title: Full-Stack Integration & Auth
-emoji: (☞ﾟヮﾟ)☞
+emoji: (ﾟヮﾟ)
 order: 9
 blurb: Wiring all four layers into one app — project structure, the controller pattern, environment config, JWT + bcrypt auth end-to-end, protected routes, and deployment.
 ---
 
-# Full-Stack Integration & Auth (☞ﾟヮﾟ)☞
+# Full-Stack Integration & Auth (ﾟヮﾟ)
 
 > This is the payoff chapter. Everything so far was one layer at a time; now we connect them into a single working app and add the thing every real app needs: **who are you, and are you allowed to do this?**
 
@@ -193,7 +193,7 @@ const requireAuth = (req, res, next) => {
   try {
     const { userId } = jwt.verify(token, process.env.JWT_SECRET);  // throws if invalid/expired
     req.userId = userId;         // hand the id to downstream handlers
-    next();                      // ✅ allowed through
+    next();                      // ✓ allowed through
   } catch {
     return res.status(401).json({ error: "Invalid or expired token" });
   }
@@ -293,14 +293,14 @@ Alternative single-host approach: have Express serve the built React files (`app
 
 ## 10. Security checklist (the basics graders and reality both want)
 
-- ✅ Passwords hashed with bcrypt, never stored or logged in plaintext.
-- ✅ `JWT_SECRET` in `.env`, not in code; `.env` gitignored.
-- ✅ Validate/sanitise every input (Mongoose schemas + checks) — never trust `req.body`.
-- ✅ Scope every query to the logged-in user (`author: req.userId`) so users can't read/modify others' data.
-- ✅ Return correct status codes (401 vs 403 vs 400).
-- ✅ Vague login errors ("invalid email or password").
-- ✅ HTTPS in production (hosts give it free).
-- ✅ Don't leak internals in error responses (generic message to client, full detail to server logs).
+- ✓ Passwords hashed with bcrypt, never stored or logged in plaintext.
+- ✓ `JWT_SECRET` in `.env`, not in code; `.env` gitignored.
+- ✓ Validate/sanitise every input (Mongoose schemas + checks) — never trust `req.body`.
+- ✓ Scope every query to the logged-in user (`author: req.userId`) so users can't read/modify others' data.
+- ✓ Return correct status codes (401 vs 403 vs 400).
+- ✓ Vague login errors ("invalid email or password").
+- ✓ HTTPS in production (hosts give it free).
+- ✓ Don't leak internals in error responses (generic message to client, full detail to server logs).
 
 ---
 

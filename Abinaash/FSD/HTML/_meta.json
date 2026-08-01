@@ -1,0 +1,9 @@
+{
+  "title": "HTML",
+  "code": "ET0744",
+  "emoji": "</>",
+  "accent": "purple",
+  "blurb": "The skeleton of every page - structure, text, links, forms and media. The stuff React eventually renders into.",
+  "tagline": "tags in, structure out",
+  "order": 2
+}

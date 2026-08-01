@@ -564,9 +564,9 @@ async function showNote(note, folder, siblings, idx, reading, outline) {
   const linkBtn = el("button", { class: "action-btn", onclick: () => {
       navigator.clipboard?.writeText(location.href).then(() => {
         linkBtn.querySelector(".s").textContent = "link copied \u2713";
-        setTimeout(() => { linkBtn.querySelector(".s").textContent = "\u{1f517} copy link"; }, 1400);
+        setTimeout(() => { linkBtn.querySelector(".s").textContent = "copy link"; }, 1400);
       });
-    } }, el("span", { class: "s" }, "\u{1f517} copy link"));
+    } }, el("span", { class: "s" }, "copy link"));
 
   reading.replaceChildren(
     crumbBar(parentPath(note.path), note.title),

@@ -1,11 +1,11 @@
 ---
 title: React Fundamentals
-emoji: ⚛️(ﾉ◕ヮ◕)ﾉ
+emoji: (ﾉ◕ヮ◕)ﾉ
 order: 7
 blurb: SPAs, Vite setup, JSX, components, props, state with useState, events, rendering lists, conditional rendering, and controlled forms. The 'R' in MERN.
 ---
 
-# React Fundamentals ⚛️(ﾉ◕ヮ◕)ﾉ
+# React Fundamentals (ﾉ◕ヮ◕)ﾉ
 
 > Here's the whole idea of React in one line: **UI is a function of state.** You describe what the screen should look like *for a given set of data*, and when the data changes, React re-runs your description and updates the screen. You stop manually poking at the DOM; you just change data.
 
@@ -133,7 +133,7 @@ function UserCard({ name, age, isAdmin }) {
   return (
     <div>
       <h2>{name} ({age})</h2>
-      {isAdmin && <span>👑 admin</span>}   {/* render only if truthy */}
+      {isAdmin && <span> admin</span>}   {/* render only if truthy */}
     </div>
   );
 }
@@ -177,11 +177,11 @@ Unpack that line — it's the most important line in React:
 
 1. **Never mutate state directly — always make a new value.** Especially for objects/arrays:
 ```jsx
-// ❌ WRONG — mutates, React doesn't see a change
+// ✗ WRONG — mutates, React doesn't see a change
 todos.push(newTodo); setTodos(todos);
 user.age = 21; setUser(user);
 
-// ✅ RIGHT — new array/object (spread from chapter 02)
+// ✓ RIGHT — new array/object (spread from chapter 02)
 setTodos([...todos, newTodo]);
 setUser({ ...user, age: 21 });
 setTodos(todos.filter(t => t.id !== id));   // remove
@@ -210,9 +210,9 @@ function Toggle() {
 
   return (
     <>
-      <button onClick={handleClick}>Toggle</button>          {/* ✅ reference */}
-      <button onClick={() => setOn(false)}>Reset</button>    {/* ✅ inline arrow */}
-      {/* <button onClick={handleClick()}>  ❌ calls immediately on render! */}
+      <button onClick={handleClick}>Toggle</button>          {/* ✓ reference */}
+      <button onClick={() => setOn(false)}>Reset</button>    {/* ✓ inline arrow */}
+      {/* <button onClick={handleClick()}>  ✗ calls immediately on render! */}
       <p>{on ? "ON" : "OFF"}</p>
     </>
   );

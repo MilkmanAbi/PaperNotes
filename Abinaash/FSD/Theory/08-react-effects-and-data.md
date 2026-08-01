@@ -273,10 +273,10 @@ For ET0744, the manual `useState` + `useEffect` + `fetch` pattern (§2) is compl
 2. **Only call hooks from React functions** — components or other hooks, not plain functions or event handlers.
 
 ```jsx
-// ❌ WRONG — hook inside a condition
+// ✗ WRONG — hook inside a condition
 if (loggedIn) { const [x, setX] = useState(0); }
 
-// ✅ RIGHT — hook at top level, use the value conditionally
+// ✓ RIGHT — hook at top level, use the value conditionally
 const [x, setX] = useState(0);
 if (loggedIn) { /* use x */ }
 ```

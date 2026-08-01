@@ -1,11 +1,11 @@
 ---
 title: Node HTTP Server From Scratch
-emoji: ⚙️(๑˃ᴗ˂)ﻭ
+emoji: (๑˃ᴗ˂)ﻭ
 order: 1
 blurb: Build a plain Node server with zero libraries — createServer, routing on req.url, and serving an HTML form with fs.readFile. This is Q1 of the Lab Test, start to finish.
 ---
 
-# Node HTTP Server From Scratch ⚙️(๑˃ᴗ˂)ﻭ
+# Node HTTP Server From Scratch (๑˃ᴗ˂)ﻭ
 
 > Before Express does anything clever, it's this: a function that gets `(req, res)` and calls `res.end()`. Learn the raw version once and Express stops being magic forever. Also - this *is* Q1 of the Lab Test. Not "based on." It *is*.
 

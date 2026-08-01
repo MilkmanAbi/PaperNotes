@@ -1,11 +1,11 @@
 ---
 title: MongoDB — The Database
-emoji: 🍃(˘ᵕ˘)
+emoji: (˘ᵕ˘)
 order: 5
 blurb: NoSQL vs SQL, documents & collections, BSON, CRUD in the shell, query operators, aggregation, indexes, and Atlas. The 'M' in MERN.
 ---
 
-# MongoDB — The Database 🍃(˘ᵕ˘)
+# MongoDB — The Database (˘ᵕ˘)
 
 > A note on the name: "Mongo" is from *humongous*. It's a database built for big, flexible, JSON-shaped data. The other three MERN letters all speak JSON natively, and Mongo stores JSON-ish documents, so the whole stack fits together with almost no translation layer.
 
@@ -105,7 +105,7 @@ db.notes.updateMany({ done: false }, { $set: { done: true } })  // mark all done
 ```js
 db.notes.deleteOne({ title: "First" })
 db.notes.deleteMany({ done: true })      // delete all completed
-db.notes.deleteMany({})                  // ⚠️ deletes EVERYTHING in the collection
+db.notes.deleteMany({})                  // deletes EVERYTHING in the collection
 ```
 
 Notice the shape: `db.<collection>.<operation>(<filter>, <update/options>)`. Every CRUD call fits it.

@@ -109,7 +109,7 @@ function videoEl(src) {
 function pdfEl(src, label) {
   const fig = document.createElement("figure"); fig.className = "media-frame pdf-frame";
   const bar = document.createElement("div"); bar.className = "pdf-bar";
-  bar.innerHTML = `<span>📄 ${escapeHtml(label || "PDF")}</span>`;
+  bar.innerHTML = `<span>${escapeHtml(label || "PDF")}</span>`;
   const open = document.createElement("a"); open.href = src; open.target = "_blank"; open.rel = "noopener";
   open.className = "btn ghost"; open.textContent = "open ↗"; bar.appendChild(open);
   const frame = document.createElement("iframe"); frame.src = src; frame.className = "pdf-embed"; frame.loading = "lazy";

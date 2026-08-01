@@ -1,4 +1,4 @@
-# PaperNotes 📓
+# PaperNotes
 
 A notebook you open in the browser. Drop markdown into folders — nested however
 deep you like — push, and it shows up as a **file tree** on beige graph paper.
@@ -25,7 +25,7 @@ No framework, no build step for the app itself — static files + `fetch`.
 - **Folder (browse) pages** — a folder as a page of subfolder cards + note cards.
 - **On-this-page outline** in the reader, built from the note's headings, with
   scroll-spy that tracks your position.
-- **Recents & bookmarks** — "continue reading" and ⭐ bookmarks surface on the
+- **Recents & bookmarks** — "continue reading" and bookmarks surface on the
   home page. Star from the tree, a card, or the reader.
 
 Everything from before still works: light/dark, four "lead" accents, paper

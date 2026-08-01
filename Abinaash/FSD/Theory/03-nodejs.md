@@ -1,11 +1,11 @@
 ---
 title: Node.js — JavaScript on the Server
-emoji: ⚙️(・_・)
+emoji: (・_・)
 order: 3
 blurb: The runtime, the event loop, npm and package.json, CommonJS vs ESM, core modules, and environment variables. The 'N' in MERN.
 ---
 
-# Node.js — JavaScript on the Server ⚙️(・_・)
+# Node.js — JavaScript on the Server (・_・)
 
 > JavaScript was born trapped in the browser. Node.js is the jailbreak. In 2009 Ryan Dahl took Chrome's V8 engine, bolted on file and network access, and suddenly JS could run *anywhere* — including on servers. That one move is why MERN exists.
 
@@ -189,7 +189,7 @@ Node is **single-threaded** for your JavaScript — there's one thread running y
 The idea: when your code hits something slow (reading a file, a database query, a network call), Node **doesn't sit and wait**. It hands that task off to the system, registers a callback, and immediately moves on to run other code. When the slow task finishes, its callback is queued and run when the thread is free. That scheduler is the **event loop**.
 
 ```
-Your JS runs ──► hits await (DB query) ──► hands off, keeps going ──► DB done? 
+Your JS runs ──► hits await (DB query) ──► hands off, keeps going ──► DB done?
       ▲                                                                    │
       └──────────────── event loop queues the callback ◄──────────────────┘
 ```

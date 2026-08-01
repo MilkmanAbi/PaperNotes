@@ -1,0 +1,9 @@
+{
+  "title": "JS",
+  "code": "ET0744",
+  "emoji": "{ }",
+  "accent": "pink",
+  "blurb": "JavaScript from first principles - values, functions, arrays, objects and the DOM. The ground floor under 'Modern JavaScript You Actually Need'.",
+  "tagline": "the language the whole stack is written in",
+  "order": 3
+}

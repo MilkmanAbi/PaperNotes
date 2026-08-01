@@ -153,9 +153,9 @@ A RESTful "notes" API looks like this — and notice how boring and predictable 
 This full set — Create, Read, Update, Delete — is called **CRUD**. A "CRUD app" is the bread and butter of full-stack development, and your ET0744 project is almost certainly one. Master a single clean CRUD resource and you can build almost anything by repeating the pattern.
 
 **Anti-patterns** (what *not* to do):
-- ❌ `GET /api/getNotes` — verb in the path. The method *is* the verb.
-- ❌ `POST /api/notes/42/delete` — use `DELETE /api/notes/42`.
-- ❌ Using GET to change data — GETs are supposed to be safe; search engines and browsers will "click" them for you.
+- ✗ `GET /api/getNotes` — verb in the path. The method *is* the verb.
+- ✗ `POST /api/notes/42/delete` — use `DELETE /api/notes/42`.
+- ✗ Using GET to change data — GETs are supposed to be safe; search engines and browsers will "click" them for you.
 
 REST is a convention, not a law — you'll see APIs that bend it. But for this module, hold the convention; it's what graders and teammates expect, and it makes your own code predictable.
 

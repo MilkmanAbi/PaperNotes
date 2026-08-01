@@ -1,11 +1,11 @@
 ---
 title: MySQL Lab — Every Task, Answered
-emoji: 🐬(๑˃ᴗ˂)
+emoji: (๑˃ᴗ˂)
 order: 6
 blurb: The full MySQL practical from CREATE DATABASE to HAVING — tables, insert, delete, update, inner join, WHERE, COUNT + GROUP BY, and both challenge questions, with the exact SQL for each task.
 ---
 
-# MySQL Lab — Every Task, Answered 🐬(๑˃ᴗ˂)
+# MySQL Lab — Every Task, Answered (๑˃ᴗ˂)
 
 > Not on the sample Lab Test, but it's a graded practical and SQL is a genuinely useful forever-skill. Every task below has the working SQL. Type them, run with `Ctrl+Enter` one at a time in the VS Code MySQL extension, watch the grid update.
 

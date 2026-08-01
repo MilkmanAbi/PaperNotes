@@ -1,11 +1,11 @@
 ---
 title: React Part 1 — Vite, Components & the Flip Card
-emoji: ⚛️(ﾉ๑˃ᴗ˂)ﾉ
+emoji: (ﾉ๑˃ᴗ˂)ﾉ
 order: 4
 blurb: Scaffold a React app with Vite, understand the file anatomy, build a component that takes props, install react-card-flip, and wire a button that flips it with useState. This is Q3 of the Lab Test.
 ---
 
-# React Part 1 — Vite, Components & the Flip Card ⚛️(ﾉ๑˃ᴗ˂)ﾉ
+# React Part 1 — Vite, Components & the Flip Card (ﾉ๑˃ᴗ˂)ﾉ
 
 > Backend done. Now the browser half. React feels big until you realise the Lab Test only wants: make an app, make a component, pass it a prop, flip it with a button. Four moves. This note is all four, ending exactly at the sample test's Q3.
 

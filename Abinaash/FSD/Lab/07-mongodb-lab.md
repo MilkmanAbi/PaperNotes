@@ -1,11 +1,11 @@
 ---
 title: MongoDB Lab — Node.js Driver, Every Task
-emoji: 🍃(๑˃ᴗ˂)ﻭ
+emoji: (๑˃ᴗ˂)ﻭ
 order: 7
 blurb: Practice 9 in full — connect from Node.js, insert/find/delete/update the same student and attendance data, then answer Tasks A–D with find, $lookup joins, and $group aggregation, printed with console.log.
 ---
 
-# MongoDB Lab — Node.js Driver, Every Task 🍃(๑˃ᴗ˂)ﻭ
+# MongoDB Lab — Node.js Driver, Every Task (๑˃ᴗ˂)ﻭ
 
 > Same data as the MySQL lab, different database. Here you drive it from a **Node.js script** with the official `mongodb` driver, and print results with `console.log`. It's the bridge between "backend JS" and "a real database."
 

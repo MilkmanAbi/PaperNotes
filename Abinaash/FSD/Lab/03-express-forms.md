@@ -1,11 +1,11 @@
 ---
 title: Express Forms — Static, POST & the Registration App
-emoji: (☞ﾟヮﾟ)☞
+emoji: (ﾟヮﾟ)
 order: 3
 blurb: Serving a form, GET vs POST, body-parser, and reading req.body — then the full registration app with a running counter and conditional logic. This is Q2 of the Lab Test, built line by line.
 ---
 
-# Express Forms — Static, POST & the Registration App (☞ﾟヮﾟ)☞
+# Express Forms — Static, POST & the Registration App (ﾟヮﾟ)
 
 > This is the backend boss fight. If you can build the registration app in this note from a blank folder, Q2 of the Lab Test is a formality. It's the highest-value single note in the Lab module.
 

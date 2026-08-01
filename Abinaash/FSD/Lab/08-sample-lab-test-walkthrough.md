@@ -1,11 +1,11 @@
 ---
 title: Sample Lab Test — Rebuilt From Scratch
-emoji: (☞ﾟヮﾟ)☞✧
+emoji: (ﾟヮﾟ)✧
 order: 8
 blurb: The real practice Lab Test, all three questions, rebuilt from an empty folder with the exact reasoning — plus a pre-flight checklist, a time budget, the mistakes that quietly cost marks, and a stuck-in-the-test triage. The one you re-read the night before.
 ---
 
-# Sample Lab Test — Rebuilt From Scratch (☞ﾟヮﾟ)☞✧
+# Sample Lab Test — Rebuilt From Scratch (ﾟヮﾟ)✧
 
 > This is the destination the whole Lab module was climbing toward. Three questions, each rebuilt from `mkdir` to "it runs." If you can do this note without looking, you're ready. Read it the night before; do it with your hands the week before.
 
