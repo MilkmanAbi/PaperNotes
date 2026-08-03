@@ -1,33 +1,863 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light" data-accent="pink" data-paper="grid" data-doodle="off">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PaperNotes</title>
-  <meta name="description" content="A notebook you can open in the browser. Markdown, images, video and PDFs on soft graph paper — study softly." />
-  <meta name="color-scheme" content="light dark" />
-
-  <!-- type: reading(Newsreader) · UI(Hanken Grotesk) · data(Spline Sans Mono) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-
-  <!-- markdown + syntax highlighting (globals: window.marked, window.hljs) -->
-  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
-
-  <link rel="stylesheet" href="PaperNotes/css/paper.css" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='84'>✧</text></svg>" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
 </head>
 <body>
-  <noscript>
-    <div style="padding:48px;text-align:center;font-family:sans-serif">
-      PaperNotes needs JavaScript. The raw markdown lives in the person/module folders of this repo.
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  .pn {
+    --ui:'Hanken Grotesk',system-ui,-apple-system,sans-serif;
+    --read:'Newsreader',Georgia,serif;
+    --mono:'Spline Sans Mono',ui-monospace,monospace;
+    --blur:0px; --sat:1; --row:32px; --glass-hi:none; --pad-x:32px; --pad-top:40px;
+    --line: color-mix(in oklab, var(--ink) 7%, transparent);
+    --line2: color-mix(in oklab, var(--ink) 13%, transparent);
+    --shadow: color-mix(in oklab, var(--canvas) 55%, #000 45%);
+    --panel: var(--panelS); --card: var(--cardS); --sunken: var(--sunkenS);
+    -webkit-font-smoothing: antialiased;
+  }
+  /* ---- theming: family × mode. mode = light|dark, family = paper|gruvbox|tokyo|solarized|sakura ---- */
+  .pn[data-theme="paper"][data-mode="light"]{ --canvas:#f2ecdd; --panelS:#ece5d4; --cardS:#faf5ea; --sunkenS:#e7dfcc; --ink:#3b362e; --ink-soft:#6f695c; --ink-faint:#a89f8c; --edge:rgba(59,54,46,.15); --accent:#b0546d; --accent-soft:rgba(176,84,109,.15); --code-bg:#ece4d1; --syn-str:#7d8a5a; --syn-num:#b07d4a; --syn-type:#6f8390; }
+  .pn[data-theme="paper"][data-mode="dark"]{ --canvas:#17191d; --panelS:#1d2025; --cardS:#22262c; --sunkenS:#14161a; --ink:#e9e3d4; --ink-soft:#a7a08e; --ink-faint:#6b6659; --edge:rgba(233,227,212,.13); --accent:#e0879f; --accent-soft:rgba(224,135,159,.16); --code-bg:#101216; --syn-str:#a3b47a; --syn-num:#d69a63; --syn-type:#8fb0c0; }
+  .pn[data-theme="gruvbox"][data-mode="dark"]{ --canvas:#282828; --panelS:#32302f; --cardS:#3c3836; --sunkenS:#1d2021; --ink:#ebdbb2; --ink-soft:#bdae93; --ink-faint:#7c6f64; --edge:rgba(235,219,178,.15); --accent:#fe8019; --accent-soft:rgba(254,128,25,.17); --code-bg:#1d2021; --syn-str:#b8bb26; --syn-num:#d3869b; --syn-type:#83a598; }
+  .pn[data-theme="gruvbox"][data-mode="light"]{ --canvas:#fbf1c7; --panelS:#f2e5bc; --cardS:#fbf1c7; --sunkenS:#ebdbb2; --ink:#3c3836; --ink-soft:#665c54; --ink-faint:#a89984; --edge:rgba(60,56,54,.16); --accent:#af3a03; --accent-soft:rgba(175,58,3,.13); --code-bg:#ebdbb2; --syn-str:#79740e; --syn-num:#b57614; --syn-type:#427b58; }
+  .pn[data-theme="tokyo"][data-mode="dark"]{ --canvas:#1a1b26; --panelS:#1f2335; --cardS:#24283b; --sunkenS:#16161e; --ink:#c0caf5; --ink-soft:#9aa5ce; --ink-faint:#565f89; --edge:rgba(192,202,245,.13); --accent:#7aa2f7; --accent-soft:rgba(122,162,247,.17); --code-bg:#16161e; --syn-str:#9ece6a; --syn-num:#ff9e64; --syn-type:#7dcfff; }
+  .pn[data-theme="tokyo"][data-mode="light"]{ --canvas:#e1e2e7; --panelS:#d5d6db; --cardS:#e9e9ed; --sunkenS:#c4c8da; --ink:#343b58; --ink-soft:#6172b0; --ink-faint:#8990b3; --edge:rgba(52,59,88,.15); --accent:#2e7de9; --accent-soft:rgba(46,125,233,.14); --code-bg:#d5d6db; --syn-str:#587539; --syn-num:#b15c00; --syn-type:#007197; }
+  .pn[data-theme="solarized"][data-mode="dark"]{ --canvas:#002b36; --panelS:#073642; --cardS:#0a3f4d; --sunkenS:#00212b; --ink:#b3bbb9; --ink-soft:#93a1a1; --ink-faint:#586e75; --edge:rgba(147,161,161,.16); --accent:#268bd2; --accent-soft:rgba(38,139,210,.18); --code-bg:#00212b; --syn-str:#2aa198; --syn-num:#cb4b16; --syn-type:#b58900; }
+  .pn[data-theme="solarized"][data-mode="light"]{ --canvas:#fdf6e3; --panelS:#eee8d5; --cardS:#fdf6e3; --sunkenS:#eee8d5; --ink:#586e75; --ink-soft:#657b83; --ink-faint:#93a1a1; --edge:rgba(101,123,131,.2); --accent:#268bd2; --accent-soft:rgba(38,139,210,.14); --code-bg:#eee8d5; --syn-str:#2aa198; --syn-num:#cb4b16; --syn-type:#b58900; }
+  .pn[data-theme="sakura"][data-mode="light"]{ --canvas:#fdeff2; --panelS:#fbe6ec; --cardS:#fff6f9; --sunkenS:#f6dbe3; --ink:#5b4b52; --ink-soft:#8a7078; --ink-faint:#c39aa8; --edge:rgba(120,70,90,.16); --accent:#d1698a; --accent-soft:rgba(209,105,138,.15); --code-bg:#f8e2e9; --syn-str:#8a9a5b; --syn-num:#c07a4a; --syn-type:#7a8aa0; }
+  .pn[data-theme="sakura"][data-mode="dark"]{ --canvas:#2a1f26; --panelS:#33262e; --cardS:#3b2c35; --sunkenS:#211820; --ink:#f2d9e2; --ink-soft:#c9a3b3; --ink-faint:#8a6b78; --edge:rgba(242,217,226,.14); --accent:#e992ac; --accent-soft:rgba(233,146,172,.16); --code-bg:#211820; --syn-str:#a9b36b; --syn-num:#d99a6a; --syn-type:#8fa8c0; }
+  /* ---- real frosted glass: derive translucency from the theme's solids ---- */
+  .pn[data-glass="on"]{
+    --panel: color-mix(in oklab, var(--panelS) 58%, transparent);
+    --card:  color-mix(in oklab, var(--cardS) 64%, transparent);
+    --sunken:color-mix(in oklab, var(--sunkenS) 52%, transparent);
+    --blur:30px; --sat:1.8;
+    --glass-hi: inset 0 1px 0 color-mix(in oklab, #fff 30%, transparent), 0 10px 34px var(--shadow);
+  }
+  .pn[data-density="comfortable"]{ --row:40px; }
+  .pn[data-paper="grid"][data-glass="off"]{ background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px),linear-gradient(var(--line2) 1px,transparent 1px),linear-gradient(90deg,var(--line2) 1px,transparent 1px); background-size:24px 24px,24px 24px,120px 120px,120px 120px; }
+  .pn[data-paper="dots"][data-glass="off"]{ background-image:radial-gradient(var(--line2) 1.1px,transparent 1.2px); background-size:22px 22px; }
+  .pn ::selection{ background:var(--accent-soft); }
+  .pn ::-webkit-scrollbar{ width:9px; height:9px; }
+  .pn ::-webkit-scrollbar-thumb{ background:var(--edge); border-radius:8px; border:2px solid transparent; background-clip:padding-box; }
+  .pn ::-webkit-scrollbar-thumb:hover{ background:var(--ink-faint); background-clip:padding-box; }
+  @keyframes pn-fade{ from{opacity:0} to{opacity:1} }
+  @keyframes pn-rise{ from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes pn-pop{ 0%{transform:scale(1)} 40%{transform:scale(1.18) rotate(-5deg)} 100%{transform:scale(1)} }
+  @keyframes pn-spark{ from{transform:translate(0,0) scale(.3);opacity:1} to{transform:translate(var(--dx),var(--dy)) scale(1);opacity:0} }
+  @keyframes pn-flash{ 0%{box-shadow:0 0 0 0 var(--accent-soft)} 50%{box-shadow:0 0 0 8px var(--accent-soft)} 100%{box-shadow:0 0 0 0 transparent} }
+  .md{ font-family:var(--read); color:var(--ink); font-size:calc(19px * var(--fs,1)); line-height:1.75; }
+  .md > *:first-child{ margin-top:0; }
+  .md h1,.md h2,.md h3{ font-family:var(--read); font-weight:560; line-height:1.2; color:var(--ink); letter-spacing:-.01em; text-wrap:balance; }
+  .md h1{ font-size:1.9em; margin:0 0 .55em; }
+  .md h2{ font-size:1.42em; margin:1.7em 0 .5em; padding-bottom:.26em; border-bottom:1px solid var(--edge); }
+  .md h3{ font-size:1.16em; margin:1.5em 0 .4em; }
+  .md p{ margin:0 0 1.05em; }
+  .md strong{ font-weight:600; }
+  .md em{ font-style:italic; }
+  .md del{ color:var(--ink-faint); }
+  .md a{ color:var(--accent); text-decoration-color:var(--accent-soft); text-underline-offset:3px; }
+  .md a:hover{ text-decoration-color:var(--accent); }
+  .md ul,.md ol{ margin:0 0 1.05em; padding-left:1.3em; }
+  .md li{ margin:.3em 0; }
+  .md li::marker{ color:var(--ink-faint); }
+  .md hr{ border:none; border-top:1px solid var(--edge); margin:2em 0; }
+  .md blockquote{ margin:1.3em 0; padding:.1em 0 .1em 1.2em; border-left:2px solid var(--accent); color:var(--ink-soft); font-style:italic; }
+  .md blockquote p:last-child{ margin-bottom:0; }
+  .md code{ font-family:var(--mono); font-size:.8em; background:var(--code-bg); padding:.12em .4em; border-radius:5px; border:1px solid var(--edge); }
+  .md pre{ position:relative; margin:1.25em 0; background:var(--code-bg); border:1px solid var(--edge); border-radius:8px; padding:16px; overflow:auto; }
+  .md pre code{ font-family:var(--mono); font-size:13.5px; line-height:1.6; background:none; border:none; padding:0; white-space:pre; }
+  .md table{ width:100%; border-collapse:collapse; margin:1.35em 0; font-family:var(--ui); font-size:14.5px; }
+  .md th,.md td{ text-align:left; padding:8px 12px; border-bottom:1px solid var(--edge); }
+  .md th{ font-weight:700; border-bottom:2px solid var(--edge); }
+  .md td{ color:var(--ink-soft); }
+  .md tr:hover td{ background:var(--accent-soft); }
+  .md figure.taped{ margin:1.5em auto; max-width:92%; position:relative; transform:rotate(var(--tilt,0deg)); }
+  .md figure.taped img{ max-width:100%; display:block; border-radius:3px; box-shadow:0 6px 20px var(--shadow); cursor:zoom-in; border:1px solid var(--edge); }
+  .md figure.taped::before{ content:""; position:absolute; top:-11px; left:50%; transform:translateX(-50%) rotate(-3deg); width:88px; height:22px; background:var(--accent-soft); border:1px solid var(--edge); opacity:.85; }
+  .md figure.taped figcaption{ font-family:var(--mono); font-size:12px; color:var(--ink-faint); text-align:center; margin-top:.6em; }
+  .md .katex-display{ overflow-x:auto; overflow-y:hidden; padding:4px 2px; }
+  .pn-copy{ position:absolute; top:8px; right:8px; font-family:var(--mono); font-size:11px; color:var(--ink-faint); background:var(--card); border:1px solid var(--edge); border-radius:5px; padding:3px 8px; cursor:pointer; opacity:0; transition:opacity .12s; }
+  .md pre:hover .pn-copy{ opacity:1; }
+  .pn-copy:hover{ color:var(--accent); }
+  .hljs-comment,.hljs-quote{ color:var(--ink-faint); font-style:italic; }
+  .hljs-keyword,.hljs-selector-tag,.hljs-built_in,.hljs-name{ color:var(--accent); font-weight:600; }
+  .hljs-string,.hljs-attr,.hljs-template-variable{ color:var(--syn-str); }
+  .hljs-number,.hljs-literal,.hljs-title,.hljs-function .hljs-title{ color:var(--syn-num); }
+  .hljs-type,.hljs-class .hljs-title,.hljs-tag{ color:var(--syn-type); }
+  @media (prefers-reduced-motion: reduce){ .pn *, .md *{ animation-duration:.001ms !important; transition-duration:.001ms !important; } }
+  @media (max-width: 640px){
+    .pn{ --pad-x:16px; --pad-top:26px; }
+    .pn .md{ font-size:calc(17px * var(--fs,1)); }
+    .pn .md h1{ font-size:1.65em; }
+    .pn .md pre{ border-radius:6px; padding:12px; }
+    .pn .md pre code{ font-size:12.5px; }
+    .pn .md table{ font-size:13px; }
+    .pn .md figure.taped{ max-width:100%; }
+  }
+</style>
+</helmet>
+
+<div class="pn" data-theme="{{ family }}" data-mode="{{ mode }}" data-glass="{{ glassAttr }}" data-paper="{{ paper }}" data-density="{{ density }}" style="position:relative;min-height:100vh;background-color:var(--canvas);color:var(--ink);font-family:var(--ui);--fs:{{ fontScale }}">
+
+  <sc-if value="{{ glassOn }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;z-index:0;background-size:cover;background-position:center;background-image:url({{ wallpaperUrl }})"></div>
+    <div style="position:fixed;inset:0;z-index:0;background:{{ wallScrim }}"></div>
+  </sc-if>
+
+  <div style="position:relative;z-index:1;display:flex;min-height:100vh;width:100%">
+
+    <!-- ===== SIDEBAR ===== -->
+    <sc-if value="{{ sidebarOpen }}" hint-placeholder-val="{{ true }}">
+      <aside style="{{ sidebarStyle }}">
+        <div style="display:flex;align-items:center;gap:8px;padding:14px 14px 10px">
+          <div style="font-family:var(--ui);font-weight:800;font-size:18px;letter-spacing:-.02em;color:var(--ink)">PaperNotes<span style="color:var(--accent)">.</span></div>
+          <span style="flex:1"></span>
+          <button onClick="{{ onToggleSidebar }}" title="hide sidebar" style="display:flex;background:none;border:none;color:var(--ink-faint);cursor:pointer;padding:5px;border-radius:6px" style-hover="color:var(--accent);background:var(--panel)">{{ iconPanel }}</button>
+        </div>
+
+        <div style="padding:2px 12px 10px">
+          <button onClick="{{ onOpenPalette }}" style="display:flex;align-items:center;gap:9px;width:100%;background:var(--sunken);border:1px solid var(--edge);border-radius:9px;padding:7px 11px;cursor:pointer;text-align:left;backdrop-filter:blur(var(--blur)) saturate(var(--sat))" style-hover="border-color:var(--accent)">
+            <span style="display:flex;color:var(--ink-faint)">{{ iconSearch }}</span>
+            <span style="flex:1;font-family:var(--ui);font-size:13px;color:var(--ink-faint)">Search everything…</span>
+            <kbd style="font-family:var(--mono);font-size:10px;color:var(--ink-faint);border:1px solid var(--edge);border-radius:5px;padding:1px 6px">⌘K</kbd>
+          </button>
+        </div>
+
+        <div id="pn-side-scroll" style="flex:1;overflow-y:auto;overflow-x:hidden;padding:2px 8px 8px">
+          <sc-if value="{{ hasPinned }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);padding:8px 8px 5px"><span style="display:flex;color:var(--accent)">{{ iconStarSmall }}</span> pinned</div>
+            <sc-for list="{{ pinnedRows }}" as="row" hint-placeholder-count="2">
+              <button onClick="{{ row.onMain }}" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:none;border-radius:6px;cursor:pointer;color:var(--ink);padding:0 10px;height:calc(var(--row) - 4px)" style-hover="background:var(--panel)">
+                <span style="display:flex;color:var(--accent)">{{ row.icon }}</span>
+                <span style="flex:1;min-width:0;font-family:var(--ui);font-size:13.5px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ row.title }}</span>
+                <span style="font-family:var(--mono);font-size:10px;color:var(--ink-faint);white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis">{{ row.crumb }}</span>
+              </button>
+            </sc-for>
+            <div style="height:1px;background:var(--edge);margin:10px 8px 4px"></div>
+          </sc-if>
+
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);padding:8px 8px 5px">notebook</div>
+          <sc-for list="{{ treeRows }}" as="row" hint-placeholder-count="7">
+            <div style="position:relative">
+              <button onClick="{{ row.onMain }}" style="{{ row.rowStyle }}" style-hover="background:var(--panel)">
+                <span style="{{ row.twStyle }}">{{ row.tw }}</span>
+                <span style="display:flex;color:{{ row.iconColor }}">{{ row.icon }}</span>
+                <span style="{{ row.nameStyle }}">{{ row.title }}</span>
+                <span style="flex:1"></span>
+                <span style="font-family:var(--mono);font-size:10px;color:var(--ink-faint)">{{ row.meta }}</span>
+              </button>
+              <button onClick="{{ row.onRight }}" title="{{ row.rightTitle }}" style="{{ row.rightStyle }}" style-hover="color:var(--accent)">{{ row.rightIcon }}</button>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:4px;padding:8px 12px;border-top:1px solid var(--edge)">
+          <button onClick="{{ onOpenSettings }}" style="display:inline-flex;align-items:center;gap:8px;background:none;border:none;color:var(--ink-soft);cursor:pointer;font-family:var(--ui);font-size:12.5px;font-weight:600;padding:6px 8px;border-radius:6px" style-hover="color:var(--accent);background:var(--panel)"><span style="display:flex">{{ iconSettings }}</span> settings</button>
+          <span style="flex:1"></span>
+          <button onClick="{{ onAddWidgetQuick }}" title="add a widget" style="display:flex;background:none;border:none;color:var(--ink-soft);cursor:pointer;padding:6px;border-radius:6px" style-hover="color:var(--accent);background:var(--panel)">{{ iconWidget }}</button>
+          <button onClick="{{ onToggleGlass }}" title="paper / glass" style="display:flex;background:none;border:none;color:{{ glassOn ? 'var(--accent)' : 'var(--ink-soft)' }};cursor:pointer;padding:6px;border-radius:6px" style-hover="color:var(--accent);background:var(--panel)">{{ iconGlass }}</button>
+        </div>
+      </aside>
+      <div onMouseDown="{{ onStartResize }}" title="drag to resize" style="{{ resizeStyle }}" style-hover="background:var(--accent-soft)"></div>
+    </sc-if>
+
+    <!-- ===== MAIN ===== -->
+    <main id="pn-main" style="{{ mainStyle }}">
+      <div style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;height:48px;padding:0 16px;border-bottom:1px solid var(--edge);background:var(--panel);backdrop-filter:blur(var(--blur)) saturate(var(--sat))">
+        <sc-if value="{{ showOpenBtn }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ onToggleSidebar }}" title="show sidebar" style="display:flex;background:none;border:none;color:var(--ink-soft);cursor:pointer;padding:5px;border-radius:6px" style-hover="color:var(--accent);background:var(--card)">{{ iconPanel }}</button>
+        </sc-if>
+        <nav style="display:flex;align-items:center;gap:3px;flex-wrap:wrap;min-width:0">
+          <sc-for list="{{ crumbs }}" as="c" hint-placeholder-count="1">
+            <button onClick="{{ c.onClick }}" style="{{ c.style }}" style-hover="color:var(--accent)">{{ c.label }}</button>
+            <sc-if value="{{ c.sep }}" hint-placeholder-val="{{ false }}"><span style="color:var(--ink-faint);font-family:var(--mono);font-size:12px;opacity:.5">/</span></sc-if>
+          </sc-for>
+        </nav>
+        <span style="flex:1"></span>
+        <button onClick="{{ onOpenPalette }}" title="search (⌘K)" style="display:flex;color:var(--ink-soft);background:none;border:none;border-radius:8px;padding:7px;cursor:pointer" style-hover="color:var(--accent);background:var(--card)">{{ iconSearchLg }}</button>
+      </div>
+
+      <!-- HOME -->
+      <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+        <div style="max-width:900px;margin:0 auto;padding:var(--pad-top) var(--pad-x) 120px;animation:pn-rise .4s ease both">
+          <div style="font-family:var(--mono);font-size:12.5px;color:var(--ink-faint)">{{ dateLine }}</div>
+          <h1 style="font-family:var(--read);font-weight:520;font-size:32px;color:var(--ink);margin:6px 0 4px;letter-spacing:-.01em">{{ greeting }}</h1>
+          <div style="font-family:var(--read);font-style:italic;font-size:16px;color:var(--ink-soft)">{{ cozyLine }}</div>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:22px">
+            <div style="flex:1;min-width:150px;background:var(--card);border:1px solid var(--edge);border-radius:10px;padding:13px 15px;backdrop-filter:blur(var(--blur)) saturate(var(--sat));box-shadow:var(--glass-hi)">
+              <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint)">pages read</div>
+              <div style="font-family:var(--read);font-size:24px;color:var(--ink);margin-top:3px">{{ statPages }}</div>
+              <div style="height:5px;background:var(--sunken);border-radius:999px;overflow:hidden;margin-top:9px"><div style="height:100%;background:var(--accent);border-radius:999px;width:{{ progressPct }}%"></div></div>
+            </div>
+            <div style="flex:1;min-width:150px;background:var(--card);border:1px solid var(--edge);border-radius:10px;padding:13px 15px;backdrop-filter:blur(var(--blur)) saturate(var(--sat));box-shadow:var(--glass-hi)">
+              <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint)">notebook</div>
+              <div style="font-family:var(--read);font-size:24px;color:var(--ink);margin-top:3px">{{ statFolders }}</div>
+              <div style="font-family:var(--ui);font-size:12px;color:var(--ink-soft);margin-top:6px">{{ statNotesLine }}</div>
+            </div>
+            <button onClick="{{ onAddWidgetQuick }}" style="flex:1;min-width:150px;text-align:left;background:var(--card);border:1px dashed var(--edge);border-radius:10px;padding:13px 15px;cursor:pointer;backdrop-filter:blur(var(--blur)) saturate(var(--sat))" style-hover="border-color:var(--accent)">
+              <div style="display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint)"><span style="display:flex">{{ iconWidget }}</span> widgets</div>
+              <div style="font-family:var(--read);font-size:18px;color:var(--ink);margin-top:4px">{{ statWidgets }}</div>
+              <div style="font-family:var(--ui);font-size:12px;color:var(--ink-soft);margin-top:4px">drop a timer or clock on the page →</div>
+            </button>
+          </div>
+
+          <sc-if value="{{ hasRecents }}" hint-placeholder-val="{{ false }}">
+            <div style="font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-faint);margin:28px 0 10px">continue reading</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <sc-for list="{{ recentChips }}" as="c" hint-placeholder-count="3">
+                <button onClick="{{ c.onClick }}" style="display:inline-flex;align-items:center;gap:8px;white-space:nowrap;font-family:var(--ui);font-size:13px;color:var(--ink);background:var(--card);border:1px solid var(--edge);border-radius:999px;padding:7px 14px;cursor:pointer;backdrop-filter:blur(var(--blur)) saturate(var(--sat))" style-hover="border-color:var(--accent)"><span style="display:flex;color:var(--accent)">{{ c.icon }}</span> {{ c.title }}</button>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-faint);margin:28px 0 12px">your notebook</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px">
+            <sc-for list="{{ folderCards }}" as="f" hint-placeholder-count="3">
+              <button onClick="{{ f.onClick }}" style="display:flex;flex-direction:column;gap:7px;text-align:left;cursor:pointer;background:var(--card);border:1px solid var(--edge);border-radius:10px;padding:15px 16px;backdrop-filter:blur(var(--blur)) saturate(var(--sat));box-shadow:var(--glass-hi)" style-hover="border-color:var(--accent)">
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <span style="display:flex;color:var(--accent)">{{ f.icon }}</span>
+                  <span style="font-family:var(--mono);font-size:11px;color:var(--ink-faint)">{{ f.count }}</span>
+                </div>
+                <div style="font-family:var(--read);font-size:19px;color:var(--ink)">{{ f.title }}</div>
+                <div style="font-family:var(--ui);font-size:12.5px;color:var(--ink-soft);line-height:1.5">{{ f.blurb }}</div>
+                <div style="height:4px;background:var(--sunken);border-radius:999px;overflow:hidden;margin-top:2px"><div style="height:100%;background:var(--accent);border-radius:999px;width:{{ f.pct }}%"></div></div>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- BROWSE -->
+      <sc-if value="{{ isBrowse }}" hint-placeholder-val="{{ false }}">
+        <div style="max-width:860px;margin:0 auto;padding:var(--pad-top) var(--pad-x) 120px;animation:pn-rise .4s ease both">
+          <div style="display:flex;color:var(--accent)">{{ browseIcon }}</div>
+          <h1 style="font-family:var(--read);font-weight:540;font-size:30px;color:var(--ink);margin:8px 0 3px">{{ browseTitle }}</h1>
+          <div style="font-family:var(--mono);font-size:12.5px;color:var(--ink-faint)">{{ browseTagline }}</div>
+          <p style="font-family:var(--ui);font-size:14.5px;color:var(--ink-soft);line-height:1.6;max-width:62ch;margin:12px 0 0">{{ browseBlurb }}</p>
+          <div style="display:flex;align-items:center;gap:12px;margin:16px 0 4px">
+            <div style="flex:1;max-width:280px;height:5px;background:var(--sunken);border-radius:999px;overflow:hidden"><div style="height:100%;background:var(--accent);border-radius:999px;width:{{ browsePct }}%"></div></div>
+            <span style="font-family:var(--mono);font-size:11px;color:var(--ink-faint)">{{ browseProgText }}</span>
+          </div>
+          <sc-if value="{{ browseHasFolders }}" hint-placeholder-val="{{ false }}">
+            <div style="font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-faint);margin:26px 0 12px">folders</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">
+              <sc-for list="{{ browseFolders }}" as="f" hint-placeholder-count="2">
+                <button onClick="{{ f.onClick }}" style="display:flex;flex-direction:column;gap:7px;text-align:left;cursor:pointer;background:var(--card);border:1px solid var(--edge);border-radius:10px;padding:14px 16px;backdrop-filter:blur(var(--blur)) saturate(var(--sat));box-shadow:var(--glass-hi)" style-hover="border-color:var(--accent)">
+                  <div style="display:flex;align-items:center;justify-content:space-between"><span style="display:flex;color:var(--accent)">{{ f.icon }}</span><span style="font-family:var(--mono);font-size:11px;color:var(--ink-faint)">{{ f.count }}</span></div>
+                  <div style="font-family:var(--read);font-size:18px;color:var(--ink)">{{ f.title }}</div>
+                  <div style="font-family:var(--ui);font-size:12px;color:var(--ink-soft);line-height:1.5">{{ f.blurb }}</div>
+                </button>
+              </sc-for>
+            </div>
+          </sc-if>
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-faint);margin:26px 0 10px">{{ browseNotesLabel }}</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <sc-for list="{{ browseNotes }}" as="n" hint-placeholder-count="3">
+              <div style="position:relative;display:flex;background:var(--card);border:1px solid var(--edge);border-radius:10px;overflow:hidden;backdrop-filter:blur(var(--blur)) saturate(var(--sat))" style-hover="border-color:var(--accent)">
+                <button onClick="{{ n.onClick }}" style="flex:1;min-width:0;display:flex;align-items:center;gap:14px;background:none;border:none;cursor:pointer;text-align:left;padding:13px 16px;color:inherit">
+                  <span style="font-family:var(--mono);font-size:13px;color:var(--accent);min-width:22px">{{ n.num }}</span>
+                  <div style="flex:1;min-width:0">
+                    <div style="font-family:var(--read);font-size:17px;color:{{ n.titleColor }}">{{ n.title }}</div>
+                    <div style="font-family:var(--ui);font-size:12.5px;color:var(--ink-soft);line-height:1.5;margin-top:2px">{{ n.blurb }}</div>
+                  </div>
+                  <span style="font-family:var(--mono);font-size:11px;color:var(--ink-faint);white-space:nowrap">{{ n.min }}</span>
+                  <span style="display:flex;color:var(--accent);min-width:16px">{{ n.check }}</span>
+                </button>
+                <button onClick="{{ n.onStar }}" title="pin" style="display:flex;align-self:center;background:none;border:none;cursor:pointer;color:{{ n.starColor }};padding:0 12px" style-hover="color:var(--accent)">{{ n.star }}</button>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- READER -->
+      <sc-if value="{{ isNote }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;justify-content:center;gap:32px;padding:0 var(--pad-x);animation:pn-fade .3s ease both">
+          <div style="width:100%;max-width:{{ measurePx }};padding:36px 0 140px">
+            <nav style="display:flex;align-items:center;gap:3px;flex-wrap:wrap;margin-bottom:20px">
+              <sc-for list="{{ noteCrumbs }}" as="c" hint-placeholder-count="2">
+                <button onClick="{{ c.onClick }}" style="{{ c.style }}" style-hover="color:var(--accent)">{{ c.label }}</button>
+                <sc-if value="{{ c.sep }}" hint-placeholder-val="{{ false }}"><span style="color:var(--ink-faint);font-family:var(--mono);font-size:12px;opacity:.5">/</span></sc-if>
+              </sc-for>
+            </nav>
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:26px;font-family:var(--mono);font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint)"><span style="display:flex;color:var(--accent)">{{ noteIcon }}</span> {{ noteKicker }}</div>
+            <article class="md" ref="{{ artRef }}"></article>
+
+            <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:40px;align-items:center">
+              <button onClick="{{ onMarkRead }}" style="{{ markReadStyle }}"><span style="display:flex">{{ markReadIcon }}</span> {{ markReadLabel }}</button>
+              <button onClick="{{ onPinNote }}" style="{{ pinNoteStyle }}"><span style="display:flex">{{ pinNoteIcon }}</span> {{ pinNoteLabel }}</button>
+            </div>
+
+            <!-- margin notes / comments -->
+            <div style="margin-top:44px;border-top:1px solid var(--edge);padding-top:22px">
+              <div style="display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:12px"><span style="display:flex;color:var(--accent)">{{ iconMessage }}</span> margin notes {{ commentCount }}</div>
+              <sc-for list="{{ comments }}" as="cm" hint-placeholder-count="0">
+                <div style="position:relative;background:var(--card);border:1px solid var(--edge);border-radius:9px;padding:11px 14px;margin-bottom:8px;backdrop-filter:blur(var(--blur)) saturate(var(--sat))">
+                  <div style="font-family:var(--read);font-size:15px;color:var(--ink);line-height:1.55;white-space:pre-wrap">{{ cm.text }}</div>
+                  <div style="display:flex;align-items:center;gap:8px;margin-top:6px"><span style="font-family:var(--mono);font-size:11px;color:var(--ink-faint)">{{ cm.when }}</span><span style="flex:1"></span><button onClick="{{ cm.onDelete }}" title="delete" style="display:flex;background:none;border:none;color:var(--ink-faint);cursor:pointer;padding:2px" style-hover="color:var(--accent)">{{ iconTrash }}</button></div>
+                </div>
+              </sc-for>
+              <div style="display:flex;gap:8px;align-items:flex-end;margin-top:4px">
+                <textarea value="{{ commentDraft }}" onInput="{{ onCommentInput }}" onKeyDown="{{ onCommentKey }}" placeholder="scribble a thought — it saves to this device…" rows="2" style="flex:1;resize:vertical;font-family:var(--read);font-size:15px;color:var(--ink);background:var(--sunken);border:1px solid var(--edge);border-radius:9px;padding:10px 12px;outline:none;min-height:44px"></textarea>
+                <button onClick="{{ onAddComment }}" style="display:flex;align-items:center;gap:6px;font-family:var(--ui);font-size:13px;font-weight:600;color:var(--canvas);background:var(--accent);border:none;border-radius:9px;padding:10px 14px;cursor:pointer">{{ iconPlus }} add</button>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:12px;margin-top:36px">
+              <sc-if value="{{ hasPrev }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ onPrev }}" style="flex:1;text-align:left;background:var(--card);border:1px solid var(--edge);border-radius:10px;padding:13px 16px;cursor:pointer;backdrop-filter:blur(var(--blur)) saturate(var(--sat))" style-hover="border-color:var(--accent)"><div style="font-family:var(--mono);font-size:11px;color:var(--ink-faint)">← previous</div><div style="font-family:var(--read);font-size:16px;color:var(--ink);margin-top:2px">{{ prevTitle }}</div></button>
+              </sc-if>
+              <sc-if value="{{ hasNext }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ onNext }}" style="flex:1;text-align:right;background:var(--card);border:1px solid var(--edge);border-radius:10px;padding:13px 16px;cursor:pointer;backdrop-filter:blur(var(--blur)) saturate(var(--sat))" style-hover="border-color:var(--accent)"><div style="font-family:var(--mono);font-size:11px;color:var(--ink-faint)">next →</div><div style="font-family:var(--read);font-size:16px;color:var(--ink);margin-top:2px">{{ nextTitle }}</div></button>
+              </sc-if>
+            </div>
+          </div>
+          <sc-if value="{{ showOutline }}" hint-placeholder-val="{{ false }}">
+            <aside style="width:200px;flex:none;position:sticky;top:70px;height:max-content;padding:36px 0 0">
+              <div style="font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:9px">on this page</div>
+              <div style="display:flex;flex-direction:column;gap:1px">
+                <sc-for list="{{ outline }}" as="o" hint-placeholder-count="3">
+                  <button onClick="{{ o.onClick }}" style="{{ o.style }}" style-hover="color:var(--accent)">{{ o.text }}</button>
+                </sc-for>
+              </div>
+            </aside>
+          </sc-if>
+        </div>
+      </sc-if>
+    </main>
+  </div>
+
+  <sc-if value="{{ showMobileScrim }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onToggleSidebar }}" style="position:fixed;inset:0;z-index:14;background:rgba(10,10,12,.4);backdrop-filter:blur(2px)"></div>
+  </sc-if>
+
+  <!-- ===== FLOATING WIDGETS ===== -->
+  <sc-for list="{{ widgetViews }}" as="w" hint-placeholder-count="0">
+    <div style="{{ w.style }}">
+      <div onPointerDown="{{ w.onGrab }}" style="display:flex;align-items:center;gap:6px;padding:7px 8px 6px 10px;cursor:grab;border-bottom:1px solid var(--edge)">
+        <span style="display:flex;color:var(--ink-faint)">{{ w.gripIcon }}</span>
+        <span style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint)">{{ w.title }}</span>
+        <span style="flex:1"></span>
+        <button onClick="{{ w.onRemove }}" title="remove" style="display:flex;background:none;border:none;color:var(--ink-faint);cursor:pointer;padding:2px;border-radius:5px" style-hover="color:var(--accent)">{{ iconClose }}</button>
+      </div>
+      <sc-if value="{{ w.isPomo }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:12px 14px 13px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:{{ w.labelColor }}">{{ w.label }}</span>
+            <span style="flex:1"></span>
+            <span style="font-family:var(--mono);font-size:11px;color:var(--ink-faint);letter-spacing:.06em">{{ w.sessions }}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+            <div style="font-family:var(--mono);font-size:30px;font-weight:500;color:var(--ink);letter-spacing:.01em">{{ w.time }}</div>
+            <span style="flex:1"></span>
+            <button onClick="{{ w.onToggle }}" title="start / pause" style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:999px;border:none;background:{{ w.barColor }};color:var(--canvas);cursor:pointer" style-hover="filter:brightness(1.08)">{{ w.runIcon }}</button>
+            <button onClick="{{ w.onSkip }}" title="skip phase" style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:999px;border:1px solid var(--edge);background:var(--sunken);color:var(--ink-soft);cursor:pointer" style-hover="color:var(--accent)">{{ w.skipIcon }}</button>
+            <button onClick="{{ w.onReset }}" title="reset all rounds" style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:999px;border:1px solid var(--edge);background:var(--sunken);color:var(--ink-soft);cursor:pointer" style-hover="color:var(--accent)">{{ w.resetIcon }}</button>
+          </div>
+          <div style="height:5px;background:var(--sunken);border-radius:999px;overflow:hidden;margin-top:10px"><div style="height:100%;border-radius:999px;background:{{ w.barColor }};width:{{ w.pct }}%"></div></div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:9px">
+            <button onClick="{{ w.onMute }}" title="chime" style="display:flex;align-items:center;gap:6px;font-family:var(--ui);font-size:11px;color:var(--ink-faint);background:none;border:none;cursor:pointer;padding:0" style-hover="color:var(--accent)">{{ w.volIcon }} {{ w.volLabel }}</button>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ w.isClock }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:14px 16px 16px;text-align:center">
+          <div style="font-family:var(--mono);font-size:32px;font-weight:500;color:var(--ink);letter-spacing:.02em">{{ w.clockTime }}</div>
+          <div style="font-family:var(--ui);font-size:12px;color:var(--ink-soft);margin-top:2px">{{ w.clockDate }}</div>
+        </div>
+      </sc-if>
     </div>
-  </noscript>
+  </sc-for>
 
-  <div class="app" id="app"><!-- rendered by PaperNotes/js/app.js --></div>
+  <!-- ===== SPOTLIGHT ===== -->
+  <sc-if value="{{ paletteOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onPaletteScrim }}" style="position:fixed;inset:0;z-index:40;background:color-mix(in oklab, var(--canvas) 40%, transparent);backdrop-filter:blur(4px) saturate(1.4);display:flex;align-items:flex-start;justify-content:center;padding:12vh 20px 20px;animation:pn-fade .14s ease both">
+      <div style="width:100%;max-width:600px;display:flex;flex-direction:column;background:color-mix(in oklab, var(--cardS) 82%, transparent);border:1px solid var(--edge);border-radius:14px;box-shadow:0 30px 80px var(--shadow),var(--glass-hi);overflow:hidden;animation:pn-rise .18s ease both;backdrop-filter:blur(34px) saturate(1.8)">
+        <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--edge)">
+          <span style="display:flex;color:var(--ink-faint)">{{ iconSearchLg }}</span>
+          <input id="pn-palette-input" value="{{ paletteQuery }}" onInput="{{ onPaletteInput }}" placeholder="Search notes, jump anywhere, or run a command…" style="flex:1;font-family:var(--ui);font-size:17px;color:var(--ink);background:none;border:none;outline:none" />
+          <kbd style="font-family:var(--mono);font-size:11px;color:var(--ink-faint);border:1px solid var(--edge);border-radius:5px;padding:2px 7px">esc</kbd>
+        </div>
+        <div style="flex:1;overflow-y:auto;overflow-x:hidden;max-height:56vh;padding:8px 8px 8px">
+          <sc-for list="{{ palGroups }}" as="g" hint-placeholder-count="2">
+            <div style="font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-faint);padding:9px 12px 4px">{{ g.label }}</div>
+            <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="3">
+              <button onClick="{{ r.onClick }}" onMouseEnter="{{ r.onHover }}" style="{{ r.style }}">
+                <span style="display:flex;color:{{ r.iconColor }};flex:none">{{ r.icon }}</span>
+                <div style="flex:1;min-width:0">
+                  <div style="font-family:var(--ui);font-size:14px;color:var(--ink);display:flex;align-items:center;gap:7px">{{ r.title }}<sc-if value="{{ r.tag }}" hint-placeholder-val="{{ false }}"><span style="font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-faint);border:1px solid var(--edge);border-radius:4px;padding:0 5px">{{ r.tagText }}</span></sc-if></div>
+                  <sc-if value="{{ r.sub }}" hint-placeholder-val="{{ false }}"><div style="font-family:var(--mono);font-size:11px;color:var(--ink-faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.subText }}</div></sc-if>
+                </div>
+                <sc-if value="{{ r.hint }}" hint-placeholder-val="{{ false }}"><span style="font-family:var(--mono);font-size:11px;color:var(--ink-faint)">↵</span></sc-if>
+              </button>
+            </sc-for>
+          </sc-for>
+          <sc-if value="{{ palEmpty }}" hint-placeholder-val="{{ false }}">
+            <div style="font-family:var(--ui);font-size:14px;color:var(--ink-faint);padding:24px;text-align:center">nothing matches. try fewer words.</div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-if>
 
-  <script type="module" src="PaperNotes/js/app.js"></script>
+  <!-- ===== SETTINGS POPOVER ===== -->
+  <sc-if value="{{ settingsOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onSettingsScrim }}" style="position:fixed;inset:0;z-index:45;background:color-mix(in oklab, var(--canvas) 30%, transparent);backdrop-filter:blur(3px);display:flex;align-items:flex-start;justify-content:flex-end;padding:60px 24px 24px;animation:pn-fade .14s ease both">
+      <div style="width:100%;max-width:400px;max-height:82vh;overflow-y:auto;overflow-x:hidden;background:color-mix(in oklab, var(--cardS) 88%, transparent);border:1px solid var(--edge);border-radius:16px;box-shadow:0 24px 70px var(--shadow),var(--glass-hi);backdrop-filter:blur(34px) saturate(1.8);animation:pn-rise .18s ease both">
+        <div style="position:sticky;top:0;display:flex;align-items:center;gap:8px;padding:16px 18px 12px;background:color-mix(in oklab, var(--cardS) 70%, transparent);backdrop-filter:blur(20px)">
+          <span style="display:flex;color:var(--accent)">{{ iconSettings }}</span>
+          <div style="font-family:var(--read);font-size:19px;color:var(--ink)">Settings</div>
+          <span style="flex:1"></span>
+          <button onClick="{{ onCloseSettings }}" style="display:flex;color:var(--ink-soft);background:var(--sunken);border:1px solid var(--edge);border-radius:8px;padding:6px;cursor:pointer" style-hover="color:var(--accent)">{{ iconClose }}</button>
+        </div>
+        <div style="padding:4px 18px 20px">
+          <div style="{{ setLabel }}">Appearance</div>
+          <div style="{{ setSeg }}"><sc-for list="{{ modeOpts }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button></sc-for></div>
+          <div style="height:14px"></div>
+          <div style="{{ setSeg }}"><sc-for list="{{ surfaceOpts }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button></sc-for></div>
+          <sc-if value="{{ glassOn }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:8px;margin:10px 0 4px">
+              <sc-for list="{{ wallpaperOpts }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.onClick }}" title="{{ o.title }}" style="{{ o.style }}"></button></sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{ glassOff }}" hint-placeholder-val="{{ true }}">
+            <div style="height:10px"></div>
+            <div style="{{ setSeg }}"><sc-for list="{{ paperOpts }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button></sc-for></div>
+          </sc-if>
+
+          <div style="{{ setLabel }}">Theme</div>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:6px">
+            <sc-for list="{{ themeOpts }}" as="t" hint-placeholder-count="5">
+              <button onClick="{{ t.onClick }}" title="{{ t.name }}" style="{{ t.style }}">
+                <span style="display:flex;align-items:center;gap:7px">
+                  <span style="display:flex;gap:3px"><span style="width:11px;height:11px;border-radius:999px;background:{{ t.accent }}"></span><span style="width:11px;height:11px;border-radius:999px;background:{{ t.canvas }};box-shadow:inset 0 0 0 1px {{ t.ink }}44"></span></span>
+                  <span style="font-family:var(--ui);font-size:12.5px;font-weight:600;color:{{ t.ink }}">{{ t.name }}</span>
+                </span>
+              </button>
+            </sc-for>
+          </div>
+
+          <div style="{{ setLabel }}">Density</div>
+          <div style="{{ setSeg }}"><sc-for list="{{ densityOpts }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button></sc-for></div>
+
+          <div style="height:16px"></div>
+          <div style="{{ setLabel }}">Text size · {{ fontScaleLabel }}</div>
+          <input type="range" min="0.85" max="1.35" step="0.05" value="{{ fontScaleVal }}" onInput="{{ onFontScale }}" style="width:100%;accent-color:var(--accent)" />
+          <div style="height:8px"></div>
+          <div style="{{ setLabel }}">Line width</div>
+          <div style="{{ setSeg }}"><sc-for list="{{ measureOpts }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button></sc-for></div>
+
+          <div style="{{ setLabel }}">Pomodoro</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px"><span style="{{ setLabel3 }}">focus</span><div style="{{ setSeg2 }}"><sc-for list="{{ pomoFocusOpts }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button></sc-for></div></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px"><span style="{{ setLabel3 }}">break</span><div style="{{ setSeg2 }}"><sc-for list="{{ pomoBreakOpts }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button></sc-for></div></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span style="{{ setLabel3 }}">rounds</span><div style="{{ setSeg2 }}"><sc-for list="{{ pomoRoundOpts }}" as="o" hint-placeholder-count="4"><button onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button></sc-for></div></div>
+
+          <div style="{{ setLabel }}">Add a widget</div>
+          <div style="display:flex;gap:8px;margin-bottom:6px">
+            <button onClick="{{ onAddPomo }}" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-family:var(--ui);font-size:12.5px;font-weight:600;color:var(--ink);background:var(--sunken);border:1px solid var(--edge);border-radius:8px;padding:9px;cursor:pointer" style-hover="border-color:var(--accent);color:var(--accent)">{{ iconTimer }} pomodoro</button>
+            <button onClick="{{ onAddClock }}" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-family:var(--ui);font-size:12.5px;font-weight:600;color:var(--ink);background:var(--sunken);border:1px solid var(--edge);border-radius:8px;padding:9px;cursor:pointer" style-hover="border-color:var(--accent);color:var(--accent)">{{ iconClock }} clock</button>
+          </div>
+          <div style="font-family:var(--ui);font-size:11.5px;color:var(--ink-faint);margin-bottom:14px">widgets float on the page — drag them anywhere.</div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0">
+            <div style="{{ setLabel2 }}">Study buddy</div>
+            <button onClick="{{ onToggleBuddy }}" style="{{ buddyToggleStyle }}"><span style="{{ buddyKnobStyle }}"></span></button>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0">
+            <div style="{{ setLabel2 }}">Pomodoro chime</div>
+            <button onClick="{{ onToggleChime }}" style="{{ chimeToggleStyle }}"><span style="{{ chimeKnobStyle }}"></span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ lightboxSrc }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onCloseLightbox }}" style="position:fixed;inset:0;z-index:60;background:rgba(10,10,12,.88);display:flex;align-items:center;justify-content:center;padding:40px;cursor:zoom-out">
+      <div style="width:82vw;height:82vh;border-radius:6px;background-position:center;background-repeat:no-repeat;background-size:contain;background-image:url({{ lightboxSrc }})"></div>
+    </div>
+  </sc-if>
+
+  <!-- ===== BUDDY ===== -->
+  <sc-if value="{{ buddyEnabled }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;right:20px;bottom:18px;z-index:36;display:flex;flex-direction:column;align-items:flex-end;gap:9px">
+      <sc-if value="{{ buddyShown }}" hint-placeholder-val="{{ false }}">
+        <div style="max-width:250px;font-family:var(--ui);font-size:13px;line-height:1.45;color:var(--ink);background:var(--card);border:1px solid var(--edge);border-radius:12px 12px 4px 12px;padding:10px 13px;box-shadow:0 8px 22px var(--shadow),var(--glass-hi);backdrop-filter:blur(var(--blur)) saturate(var(--sat))">{{ buddyText }}</div>
+      </sc-if>
+      <div style="position:relative">
+        <div id="pn-spark" style="position:absolute;left:26px;top:19px;width:0;height:0;pointer-events:none"></div>
+        <button onClick="{{ onPokeBuddy }}" title="emotional support" style="{{ buddyBtnStyle }}" style-active="transform:scale(.9)">{{ buddyChar }}</button>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:760}}">
+const WP = { coast:"PaperNotes/wallpapers/coast-dusk.jpg", ridges:"PaperNotes/wallpapers/ridges-day.jpg", swirl:"PaperNotes/wallpapers/swirl.jpg" };
+const WP_NAME = { coast:"Big Sur, dusk", ridges:"Layered ridges", swirl:"Colour swirl" };
+const FAMILIES = ["paper","gruvbox","tokyo","solarized","sakura"];
+const FAMILY_META = {
+  paper:{ name:"Paper", light:{canvas:"#f2ecdd",accent:"#b0546d",ink:"#3b362e"}, dark:{canvas:"#17191d",accent:"#e0879f",ink:"#e9e3d4"} },
+  gruvbox:{ name:"Gruvbox", light:{canvas:"#fbf1c7",accent:"#af3a03",ink:"#3c3836"}, dark:{canvas:"#282828",accent:"#fe8019",ink:"#ebdbb2"} },
+  tokyo:{ name:"Tokyo", light:{canvas:"#e1e2e7",accent:"#2e7de9",ink:"#343b58"}, dark:{canvas:"#1a1b26",accent:"#7aa2f7",ink:"#c0caf5"} },
+  solarized:{ name:"Solarized", light:{canvas:"#fdf6e3",accent:"#268bd2",ink:"#586e75"}, dark:{canvas:"#002b36",accent:"#268bd2",ink:"#93a1a1"} },
+  sakura:{ name:"Sakura", light:{canvas:"#fdeff2",accent:"#d1698a",ink:"#5b4b52"}, dark:{canvas:"#2a1f26",accent:"#e992ac",ink:"#f2d9e2"} },
+};
+const MEASURES = { narrow:620, normal:720, wide:860 };
+const EXPR = [":3",">:3","T^T",":P",":O","^-^","owo",":3c",">_<","UwU",";3","x3",":]","·ω·"];
+const QUOTES = [
+  "read it again. i'm not asking.","sleep is a scam invented by beds. one more page.",
+  "you're so smart it pisses me off >:3","close the other tab. i can SEE it. i have EYES.",
+  "study now or i start crying and it's YOUR fault T^T","the exam? scared. of you. specifically.",
+  "caffeine is a food group now. this is science.","damn, look at you actually working. weird.",
+  "if it's stupid but it works, it's not stupid. keep going.","one page. i'll bribe you. i have. it's dopamine.",
+  "you got this. and if you don't, we riot.","screw perfect. done is hotter anyway.",
+  "hydrate or diedrate, nerd.","oh you're procrastinating the procrastination now? bold.",
+  "brain go brrr. we love to see it.","i believe in you more than you do and honestly it's embarrassing for both of us.",
+  "hell yeah. that's a paragraph the graders can't touch.","stop doomscrolling and doomREAD instead >:3",
+];
+const READ_LINES = ["one down. brain +1 >:3","logged it. legally yours now.","another page the graders can't touch.","hell yeah. keep flipping.","that's the good stuff. more."];
+const COZY = ["the mundane pages are the ones you keep.","study softly. the page isn't going anywhere.","one page at a time. that's the whole trick.","property of a very tired, very capable student.","small notes, kept forever."];
+const LU = {
+  search:[["circle",{cx:11,cy:11,r:8}],["path",{d:"m21 21-4.35-4.35"}]],
+  panel:[["rect",{width:18,height:18,x:3,y:3,rx:2}],["path",{d:"M9 3v18"}]],
+  settings:[["line",{x1:21,x2:14,y1:4,y2:4}],["line",{x1:10,x2:3,y1:4,y2:4}],["line",{x1:21,x2:12,y1:12,y2:12}],["line",{x1:8,x2:3,y1:12,y2:12}],["line",{x1:21,x2:16,y1:20,y2:20}],["line",{x1:12,x2:3,y1:20,y2:20}],["line",{x1:14,x2:14,y1:2,y2:6}],["line",{x1:8,x2:8,y1:10,y2:14}],["line",{x1:16,x2:16,y1:18,y2:22}]],
+  chevron:[["path",{d:"m9 18 6-6-6-6"}]],
+  star:[["path",{d:"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.12 2.12 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.12 2.12 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.12 2.12 0 0 0-1.973 0L6.02 21.94a.53.53 0 0 1-.771-.56l.882-5.139a2.12 2.12 0 0 0-.611-1.879L1.784 10.72a.53.53 0 0 1 .294-.906l5.164-.755a2.12 2.12 0 0 0 1.597-1.16z"}]],
+  timer:[["line",{x1:10,x2:14,y1:2,y2:2}],["line",{x1:12,x2:12,y1:14,y2:11}],["circle",{cx:12,cy:14,r:8}]],
+  clock:[["circle",{cx:12,cy:12,r:10}],["polyline",{points:"12 6 12 12 16 14"}]],
+  x:[["path",{d:"M18 6 6 18"}],["path",{d:"m6 6 12 12"}]],
+  plus:[["path",{d:"M5 12h14"}],["path",{d:"M12 5v14"}]],
+  check:[["path",{d:"M20 6 9 17l-5-5"}]],
+  circle:[["circle",{cx:12,cy:12,r:9}]],
+  play:[["polygon",{points:"6 3 20 12 6 21 6 3"}]],
+  pause:[["rect",{x:14,y:3,width:5,height:18,rx:1}],["rect",{x:5,y:3,width:5,height:18,rx:1}]],
+  reset:[["path",{d:"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"}],["path",{d:"M3 3v5h5"}]],
+  skip:[["polygon",{points:"5 4 15 12 5 20 5 4"}],["line",{x1:19,x2:19,y1:5,y2:19}]],
+  folder:[["path",{d:"M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"}]],
+  file:[["path",{d:"M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"}],["path",{d:"M14 2v4a2 2 0 0 0 2 2h4"}]],
+  widget:[["rect",{width:7,height:7,x:3,y:3,rx:1}],["rect",{width:7,height:7,x:14,y:3,rx:1}],["rect",{width:7,height:7,x:14,y:14,rx:1}],["rect",{width:7,height:7,x:3,y:14,rx:1}]],
+  image:[["rect",{width:18,height:18,x:3,y:3,rx:2}],["circle",{cx:9,cy:9,r:2}],["path",{d:"m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"}]],
+  message:[["path",{d:"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"}]],
+  trash:[["path",{d:"M3 6h18"}],["path",{d:"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"}],["path",{d:"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"}]],
+  volume:[["polygon",{points:"11 5 6 9 2 9 2 15 6 15 11 19 11 5"}],["path",{d:"M15.54 8.46a5 5 0 0 1 0 7.07"}]],
+  volumeX:[["polygon",{points:"11 5 6 9 2 9 2 15 6 15 11 19 11 5"}],["line",{x1:22,x2:16,y1:9,y2:15}],["line",{x1:16,x2:22,y1:9,y2:15}]],
+  grip:[["circle",{cx:9,cy:5,r:1}],["circle",{cx:9,cy:12,r:1}],["circle",{cx:9,cy:19,r:1}],["circle",{cx:15,cy:5,r:1}],["circle",{cx:15,cy:12,r:1}],["circle",{cx:15,cy:19,r:1}]],
+  cmd:[["path",{d:"M15 6v12a3 3 0 1 1-3-3h6a3 3 0 1 1-3 3"}]],
+  dot:[["circle",{cx:12,cy:12,r:2.5}]],
+  sun:[["circle",{cx:12,cy:12,r:4}],["path",{d:"M12 2v2"}],["path",{d:"M12 20v2"}],["path",{d:"m4.93 4.93 1.41 1.41"}],["path",{d:"m17.66 17.66 1.41 1.41"}],["path",{d:"M2 12h2"}],["path",{d:"M20 12h2"}],["path",{d:"m6.34 17.66-1.41 1.41"}],["path",{d:"m19.07 4.93-1.41 1.41"}]],
+  moon:[["path",{d:"M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"}]],
+};
+
+class Component extends DCLogic {
+  lsGet(k,d){ try{ const v=localStorage.getItem("pnx:"+k); return v==null?d:JSON.parse(v); }catch{ return d; } }
+  lsSet(k,v){ try{ localStorage.setItem("pnx:"+k, JSON.stringify(v)); }catch{} }
+  migrateFamily(v){ if(["paperlight","paperdark"].includes(v))return "paper"; return FAMILIES.includes(v)?v:"paper"; }
+
+  state = {
+    loaded:false, view:"home", path:"",
+    family:this.migrateFamily(this.lsGet("theme","paper")), mode:this.lsGet("mode","light"),
+    glass:this.lsGet("glass",false), paper:this.lsGet("paper","grid"),
+    density:this.lsGet("density","compact"), wallpaper:this.lsGet("wallpaper","coast"),
+    fontScale:this.lsGet("fontScale",1), measure:this.lsGet("measure","normal"),
+    sidebarOpen:this.lsGet("sidebarOpen",true), sidebarWidth:this.lsGet("sidebarWidth",282),
+    open:this.lsGet("open",[]), read:this.lsGet("read",[]), marks:this.lsGet("marks",[]), recents:this.lsGet("recents",[]),
+    widgets:this.lsGet("widgets",[]),
+    paletteOpen:false, paletteQuery:"", palIdx:0,
+    settingsOpen:false,
+    pomoFocus:this.lsGet("pomoFocus",25), pomoBreak:this.lsGet("pomoBreak",5), pomoRounds:this.lsGet("pomoRounds",4), pomoMuted:this.lsGet("pomoMuted",false),
+    pomoMode:"focus", pomoRunning:false, pomoRemaining:this.lsGet("pomoFocus",25)*60, pomoRound:1, pomoDone:false,
+    buddyEnabled:this.lsGet("buddyEnabled",true), buddyText:"", buddyShown:false, exprIdx:0, pokeCount:0,
+    outline:[], lightbox:null, commentDraft:"", now:Date.now(), vw:(typeof window!=="undefined"?window.innerWidth:1200), cozy:"",
+  };
+
+  icon(name,size,stroke,fill){ const defs=LU[name]||[]; return React.createElement("svg",{viewBox:"0 0 24 24",width:size||16,height:size||16,fill:fill||"none",stroke:"currentColor",strokeWidth:stroke||1.75,strokeLinecap:"round",strokeLinejoin:"round",style:{display:"block",flex:"none"}}, defs.map((d,i)=>React.createElement(d[0],{...d[1],key:i}))); }
+  persist(){ const s=this.state; const map={theme:s.family, mode:s.mode, glass:s.glass, paper:s.paper, density:s.density, wallpaper:s.wallpaper, fontScale:s.fontScale, measure:s.measure, sidebarOpen:s.sidebarOpen, sidebarWidth:s.sidebarWidth, open:s.open, read:s.read, marks:s.marks, recents:s.recents, widgets:s.widgets, pomoFocus:s.pomoFocus, pomoBreak:s.pomoBreak, pomoRounds:s.pomoRounds, pomoMuted:s.pomoMuted, buddyEnabled:s.buddyEnabled}; Object.keys(map).forEach(k=>this.lsSet(k,map[k])); }
+
+  componentDidMount(){
+    this.setState({ cozy: COZY[Math.floor(Math.random()*COZY.length)] });
+    if(window.innerWidth<820) this.setState({sidebarOpen:false});
+    import("./PaperNotes/pn-data.js").then(m=>{ this.buildModel(m.NOTEBOOK); this.setState({loaded:true}); this.tryArticle(); }).catch(e=>console.error("data load failed",e));
+    this._onKey=(e)=>this.onKey(e); window.addEventListener("keydown",this._onKey);
+    this._onResize=()=>{ if(Math.abs(window.innerWidth-this.state.vw)>2) this.setState({vw:window.innerWidth}); }; window.addEventListener("resize",this._onResize);
+    this._timer=setInterval(()=>this.tick(),1000); this._pollLibs();
+  }
+  componentWillUnmount(){ window.removeEventListener("keydown",this._onKey); window.removeEventListener("resize",this._onResize); clearInterval(this._timer); }
+  componentDidUpdate(){ this.tryArticle(); }
+  _pollLibs(){ if(window.marked&&window.hljs&&window.katex){ this._libs=true; this._forceArt=true; this.tryArticle(); } else if((this._pollN=(this._pollN||0)+1)<80){ setTimeout(()=>this._pollLibs(),120); } }
+
+  buildModel(data){
+    const nodes=new Map(),order=[],iNotes=[],iFolders=[];
+    const wc=s=>(s.match(/\S+/g)||[]).length;
+    const slug=t=>t.toLowerCase().replace(/[^\w\s-]/g,"").trim().replace(/\s+/g,"-").replace(/-+/g,"-");
+    const heads=body=>{ const out=[],seen={}; body.split("\n").forEach(l=>{ const m=l.match(/^(#{1,3})\s+(.+)/); if(m){ let id=slug(m[2]); if(seen[id]!=null){seen[id]++;id=id+"-"+seen[id];}else seen[id]=0; out.push({level:m[1].length,text:m[2].replace(/[*_`]/g,""),id}); } }); return out; };
+    const excerpt=body=>{ for(const p of body.split("\n\n")){ const t=p.trim(); if(t&&!t.startsWith("#")&&!t.startsWith("```")&&!t.startsWith("|")) return t.replace(/[#*_`>-]/g,"").replace(/\s+/g," ").trim().slice(0,150); } return ""; };
+    const walk=(list,parent,crumbs)=>{ for(const n of list){ const path=parent?parent+"/"+n.name:n.name; n.path=path; n.crumbs=crumbs;
+      if(n.children){ n.isFolder=true; nodes.set(path,n); iFolders.push(n); n.noteTotal=this.countNotes(n); walk(n.children,path,crumbs.concat([{title:n.title,path}])); }
+      else{ n.isNote=true; n.minutes=Math.max(1,Math.ceil(wc(n.body)/200)); n.headings=heads(n.body); n.excerpt=excerpt(n.body); n.searchText=(n.body||"").toLowerCase(); nodes.set(path,n); order.push(path); iNotes.push(n); } } };
+    walk(data,"",[]);
+    this.model={ tree:data, nodes, order, index:{notes:iNotes,folders:iFolders} };
+    if(!this.state.open.length){ this.setState({open:data.filter(n=>n.isFolder).map(n=>n.path)},()=>this.persist()); }
+  }
+  countNotes(f){ let n=0; (function w(x){ if(x.children) x.children.forEach(w); else n++; })(f); return n; }
+  notesUnder(f){ const out=[]; (function w(x){ if(x.children) x.children.forEach(w); else out.push(x); })(f); return out; }
+  setS(patch){ this.setState(patch,()=>this.persist()); }
+
+  go(view,path){ const patch={view,path}; if(view==="note"){ patch.recents=[path].concat(this.state.recents.filter(p=>p!==path)).slice(0,10); patch.commentDraft=""; } if(this.state.vw<820) patch.sidebarOpen=false; this._forceArt=true; this.setState(patch,()=>{ this.persist(); const m=document.getElementById("pn-main"); if(m) m.scrollTop=0; }); }
+  toggleFolder(path){ const o=this.state.open.slice(); const i=o.indexOf(path); i>=0?o.splice(i,1):o.push(path); this.setS({open:o}); }
+  toggleRead(path){ const r=this.state.read.slice(); const i=r.indexOf(path); const now=i<0; now?r.push(path):r.splice(i,1); this.setS({read:r}); if(now) this.say(READ_LINES[Math.floor(Math.random()*READ_LINES.length)]); }
+  toggleMark(path){ const m=this.state.marks.slice(); const i=m.indexOf(path); i<0?m.push(path):m.splice(i,1); this.setS({marks:m}); }
+
+  /* comments */
+  commentsFor(path){ const all=this.lsGet("comments",{}); return all[path]||[]; }
+  addComment(){ const t=this.state.commentDraft.trim(); if(!t) return; const path=this.state.path; const all=this.lsGet("comments",{}); (all[path]=all[path]||[]).push({id:Date.now(),text:t,ts:Date.now()}); this.lsSet("comments",all); this.setState({commentDraft:""}); }
+  delComment(id){ const path=this.state.path; const all=this.lsGet("comments",{}); all[path]=(all[path]||[]).filter(c=>c.id!==id); this.lsSet("comments",all); this.forceUpdate(); }
+
+  /* widgets */
+  addWidget(type){ const n=this.state.widgets.length; const w={id:Date.now()+Math.floor(Math.random()*99), type, x:Math.max(8,Math.round(window.innerWidth-230)), y:Math.round(84+n*132)}; this.setS({widgets:[...this.state.widgets,w]}); this.say(type==="pomodoro"?"timer's on the page. drag it wherever >:3":"tick tock. drag me somewhere cute."); }
+  removeWidget(id){ this.setS({widgets:this.state.widgets.filter(w=>w.id!==id)}); }
+  startWidgetDrag(id,e){ e.preventDefault(); const w=this.state.widgets.find(x=>x.id===id); if(!w) return; const ox=e.clientX-w.x, oy=e.clientY-w.y;
+    const move=ev=>{ const nx=Math.max(4,Math.min(window.innerWidth-140,ev.clientX-ox)); const ny=Math.max(4,Math.min(window.innerHeight-56,ev.clientY-oy)); this.setState({widgets:this.state.widgets.map(x=>x.id===id?{...x,x:nx,y:ny}:x)}); };
+    const up=()=>{ document.removeEventListener("pointermove",move); document.removeEventListener("pointerup",up); this.persist(); };
+    document.addEventListener("pointermove",move); document.addEventListener("pointerup",up); }
+
+  /* pomodoro */
+  tick(){ let dirty=false; const s=this.state;
+    if(s.pomoRunning && !s.pomoDone){ let r=s.pomoRemaining-1;
+      if(r<=0){ this.chime(); this.advancePomo(); } else this.setState({pomoRemaining:r});
+      dirty=true; }
+    if(!dirty && s.widgets.some(w=>w.type==="clock")) this.setState({now:Date.now()}); }
+  advancePomo(){ const s=this.state;
+    if(s.pomoMode==="focus"){
+      if(s.pomoRound>=s.pomoRounds){ this.setState({pomoRunning:false,pomoDone:true,pomoMode:"focus",pomoRemaining:s.pomoFocus*60}); this.say("all "+s.pomoRounds+" rounds DONE. you absolute machine >:3"); }
+      else { this.setState({pomoMode:"break",pomoRemaining:s.pomoBreak*60}); this.say("focus done. break — go breathe >:3"); } }
+    else { this.setState({pomoMode:"focus",pomoRound:s.pomoRound+1,pomoRemaining:s.pomoFocus*60}); this.say("round "+(s.pomoRound+1)+"/"+s.pomoRounds+". back in. one page."); } }
+  pomoToggle(){ if(this._ac&&this._ac.state==="suspended") this._ac.resume();
+    if(this.state.pomoDone){ this.setState({pomoDone:false,pomoMode:"focus",pomoRound:1,pomoRemaining:this.state.pomoFocus*60,pomoRunning:true}); return; }
+    this.setState({pomoRunning:!this.state.pomoRunning}); }
+  pomoReset(){ this.setState({pomoRunning:false,pomoDone:false,pomoMode:"focus",pomoRound:1,pomoRemaining:this.state.pomoFocus*60}); }
+  skipPomo(){ if(this.state.pomoDone) return; this.advancePomo(); }
+  setPomoLen(kind,val){ const patch={}; patch[kind]=val; if(!this.state.pomoRunning){ if(kind==="pomoFocus"&&this.state.pomoMode==="focus") patch.pomoRemaining=val*60; if(kind==="pomoBreak"&&this.state.pomoMode==="break") patch.pomoRemaining=val*60; } this.setS(patch); }
+  chime(){ if(this.state.pomoMuted) return; try{ const C=this._ac||(this._ac=new (window.AudioContext||window.webkitAudioContext)()); const t=C.currentTime; [660,880,990].forEach((f,i)=>{ const o=C.createOscillator(),g=C.createGain(); o.type="sine"; o.frequency.value=f; g.gain.setValueAtTime(0,t+i*.16); g.gain.linearRampToValueAtTime(.2,t+i*.16+.02); g.gain.exponentialRampToValueAtTime(.001,t+i*.16+.34); o.connect(g).connect(C.destination); o.start(t+i*.16); o.stop(t+i*.16+.36); }); }catch{} }
+
+  /* buddy */
+  say(t){ clearTimeout(this._bt); this.setState({buddyText:t,buddyShown:true}); this._bt=setTimeout(()=>this.setState({buddyShown:false}),4600); }
+  pokeBuddy(){ const n=this.state.pokeCount+1; const patch={pokeCount:n};
+    // first press shows the current face; every press after switches to the next one
+    if(this._buddyPrimed) patch.exprIdx=(this.state.exprIdx+1)%EXPR.length;
+    this._buddyPrimed=true;
+    this.setState(patch); this.say(QUOTES[Math.floor(Math.random()*QUOTES.length)]); if(n%7===0) this.sparkleBomb(); }
+  sparkleBomb(){ const host=document.getElementById("pn-spark"); if(!host) return; const chars=["✦","✧","·","✶","❋","＊","•"]; for(let i=0;i<20;i++){ const s=document.createElement("span"); const a=Math.random()*6.283, d=36+Math.random()*80; s.textContent=chars[i%chars.length]; s.style.cssText="position:absolute;left:0;top:0;font-family:var(--mono);font-size:"+(9+Math.random()*13)+"px;color:var(--accent);--dx:"+(Math.cos(a)*d).toFixed(0)+"px;--dy:"+(Math.sin(a)*d).toFixed(0)+"px;animation:pn-spark "+(0.6+Math.random()*0.5).toFixed(2)+"s ease-out forwards"; host.appendChild(s); setTimeout(()=>s.remove(),1300); } this.say("SPARKLE BOMB ✧ you've unlocked nothing. congrats >:3"); }
+
+  startResize(e){ e.preventDefault(); const move=ev=>{ this.setState({sidebarWidth:Math.min(460,Math.max(230,ev.clientX))}); }; const up=()=>{ document.removeEventListener("mousemove",move); document.removeEventListener("mouseup",up); document.body.style.userSelect=""; this.persist(); }; document.addEventListener("mousemove",move); document.addEventListener("mouseup",up); document.body.style.userSelect="none"; }
+
+  openPalette(){ this.setState({paletteOpen:true,paletteQuery:"",palIdx:0},()=>{ const i=document.getElementById("pn-palette-input"); if(i) i.focus(); }); }
+  closePalette(){ this.setState({paletteOpen:false}); }
+  runCmd(fn){ this.closePalette(); fn(); }
+
+  onKey(e){ const typing=e.target&&e.target.matches&&e.target.matches("input,textarea");
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){ e.preventDefault(); this.state.paletteOpen?this.closePalette():this.openPalette(); return; }
+    if(this.state.paletteOpen){ const rows=this._palFlat||[]; if(e.key==="ArrowDown"){e.preventDefault();this.setState({palIdx:Math.min(rows.length-1,this.state.palIdx+1)});return;} if(e.key==="ArrowUp"){e.preventDefault();this.setState({palIdx:Math.max(0,this.state.palIdx-1)});return;} if(e.key==="Enter"){e.preventDefault(); const r=rows[this.state.palIdx]; if(r)r.run(); return;} if(e.key==="Escape"){this.closePalette();return;} return; }
+    if(e.key==="Escape"){ if(this.state.settingsOpen) this.setState({settingsOpen:false}); else if(this.state.lightbox) this.setState({lightbox:null}); else if(typing) e.target.blur(); return; }
+    if(typing) return;
+    if(e.key==="/"){ e.preventDefault(); this.openPalette(); }
+    else if(e.key==="ArrowLeft"&&this._nav&&this._nav.prev) this.go("note",this._nav.prev.path);
+    else if(e.key==="ArrowRight"&&this._nav&&this._nav.next) this.go("note",this._nav.next.path);
+  }
+
+  search(q){ const toks=q.toLowerCase().split(/\s+/).filter(Boolean); if(!toks.length||!this.model) return {local:[],global:[],folders:[]}; const idx=this.model.index;
+    const score=fields=>{ let tot=0; for(const t of toks){ let best=0; for(const [txt,w] of fields){ if(!txt)continue; const p=txt.indexOf(t); if(p<0)continue; best=Math.max(best,w+(p===0?2:0)); } if(!best)return -1; tot+=best; } return tot; };
+    const local=[],global=[];
+    for(const n of idx.notes){ const s=score([[n.title.toLowerCase(),10],[n.headings.map(h=>h.text).join(" ").toLowerCase(),6],[(n.tags||[]).join(" ").toLowerCase(),5],[(n.blurb||"").toLowerCase(),4]]);
+      if(s>0){ local.push({n,s}); } else if(toks.every(t=>n.searchText.includes(t))){ global.push(n); } }
+    const folders=[]; for(const f of idx.folders){ const s=score([[f.title.toLowerCase(),8],[(f.blurb||"").toLowerCase(),3]]); if(s>0) folders.push(f); }
+    local.sort((a,b)=>b.s-a.s); return { local:local.map(x=>x.n), global, folders }; }
+
+  tryArticle(){ if(!this._libs||this.state.view!=="note"||!this.artRef||!this.artRef.current) return; const note=this.model&&this.model.nodes.get(this.state.path); if(!note||!note.isNote) return; const key=note.path+"|"+this.state.fontScale; if(this._artKey===key&&!this._forceArt) return; this._artKey=key; this._forceArt=false;
+    const c=this.artRef.current; const math=[]; let s=note.body;
+    s=s.replace(/\$\$([\s\S]+?)\$\$/g,(m,tex)=>{const i=math.length;math.push({tex:tex.trim(),display:true});return "@@PNMATH"+i+"@@";});
+    s=s.replace(/\$([^\$\n]+?)\$/g,(m,tex)=>{const i=math.length;math.push({tex:tex.trim(),display:false});return "@@PNMATH"+i+"@@";});
+    let html=window.marked.parse(s);
+    html=html.replace(/@@PNMATH(\d+)@@/g,(m,i)=>{const it=math[i];try{return window.katex.renderToString(it.tex,{displayMode:it.display,throwOnError:false});}catch(e){return m;}});
+    c.innerHTML=html;
+    const seen={},outline=[]; c.querySelectorAll("h1,h2,h3").forEach(h=>{ let id=h.textContent.toLowerCase().replace(/[^\w\s-]/g,"").trim().replace(/\s+/g,"-").replace(/-+/g,"-"); if(seen[id]!=null){seen[id]++;id=id+"-"+seen[id];}else seen[id]=0; h.id=id; outline.push({level:Number(h.tagName[1]),text:h.textContent,id}); });
+    c.querySelectorAll("pre code").forEach(el=>{ try{ window.hljs.highlightElement(el); }catch{} });
+    c.querySelectorAll("pre").forEach(pre=>{ const b=document.createElement("button"); b.className="pn-copy"; b.textContent="copy"; b.onclick=()=>{ const t=pre.querySelector("code")?pre.querySelector("code").innerText:pre.innerText; navigator.clipboard&&navigator.clipboard.writeText(t).then(()=>{b.textContent="copied ✓";setTimeout(()=>b.textContent="copy",1300);}); }; pre.appendChild(b); });
+    c.querySelectorAll("img").forEach(img=>{ let src=img.getAttribute("src")||""; if(src.startsWith("wallpaper:")) src=WP[src.slice(10)]||src; img.setAttribute("src",src); img.loading="lazy"; const alt=img.getAttribute("alt"); const fig=document.createElement("figure"); fig.className="taped"; fig.style.setProperty("--tilt",(Math.random()*2.4-1.2).toFixed(2)+"deg"); img.replaceWith(fig); fig.appendChild(img); if(alt){ const cap=document.createElement("figcaption"); cap.textContent=alt; fig.appendChild(cap); } img.addEventListener("click",()=>this.setState({lightbox:img.src})); });
+    const flat=outline.filter(o=>o.level<=3); if(JSON.stringify(flat)!==JSON.stringify(this.state.outline)) this.setState({outline:flat});
+  }
+  scrollToHead(id){ const el=document.getElementById(id),sc=document.getElementById("pn-main"); if(el&&sc){ const r=el.getBoundingClientRect(),sr=sc.getBoundingClientRect(); sc.scrollTo({top:sc.scrollTop+(r.top-sr.top)-20,behavior:"smooth"}); } }
+
+  crumbStyle(cur){ return "font-family:var(--mono);font-size:12px;background:none;border:none;cursor:"+(cur?"default":"pointer")+";padding:3px 5px;border-radius:6px;color:"+(cur?"var(--ink)":"var(--ink-soft)")+";font-weight:"+(cur?"600":"400"); }
+  segWrap(){ return "display:flex;gap:2px;background:var(--sunken);border:1px solid var(--edge);border-radius:9px;padding:3px;margin-bottom:2px"; }
+  segBtn(active){ return "flex:1;padding:6px 10px;border:none;border-radius:6px;cursor:pointer;font-family:var(--ui);font-size:12.5px;font-weight:600;white-space:nowrap;"+(active?"background:var(--accent);color:var(--canvas);":"background:transparent;color:var(--ink-soft);"); }
+  seg(list,val,pick){ return list.map(o=>({ label:o.l, style:this.segBtn(o.v===val), onClick:()=>pick(o.v) })); }
+  toggleStyle(on){ return "width:42px;height:24px;border-radius:999px;border:1px solid var(--edge);cursor:pointer;position:relative;background:"+(on?"var(--accent)":"var(--sunken)"); }
+  knobStyle(on){ return "position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:999px;background:var(--canvas);transform:translateX("+(on?"18px":"0")+")"; }
+  crumbsFor(view,node){ const arr=[{label:"PaperNotes",cur:false,sep:true,onClick:()=>this.go("home","")}];
+    let chain=node?node.crumbs.concat([{title:node.title,path:node.path}]):[];
+    chain.forEach((c,i)=>{ const last=i===chain.length-1; arr.push({ label:c.title, cur:last, sep:!last, onClick:last?(()=>{}):(()=>this.go("browse",c.path)) }); });
+    return arr.map(c=>({ label:c.label, sep:c.sep, style:this.crumbStyle(c.cur), onClick:c.onClick })); }
+
+  renderVals(){
+    const s=this.state, dark=s.mode==="dark", glassOn=!!s.glass, mobile=s.vw<820;
+    const nodes=this.model?this.model.nodes:new Map();
+    const read=new Set(s.read), marks=new Set(s.marks), open=new Set(s.open);
+    const wallScrim=dark?"linear-gradient(180deg, rgba(10,12,16,.5), rgba(10,12,16,.66))":"linear-gradient(180deg, rgba(246,241,232,.24), rgba(246,241,232,.46))";
+    const sideBase="display:flex;flex-direction:column;flex:none;background:var(--panel);backdrop-filter:blur(var(--blur)) saturate(var(--sat));height:100vh;";
+    const sidebarStyle=mobile?sideBase+"position:fixed;left:0;top:0;z-index:15;width:min(86vw,320px);box-shadow:0 10px 40px var(--shadow);border-right:1px solid var(--edge)":sideBase+"position:sticky;top:0;width:"+s.sidebarWidth+"px";
+    const resizeStyle=mobile?"display:none":"width:5px;flex:none;cursor:col-resize;background:transparent;border-left:1px solid var(--edge);position:sticky;top:0;height:100vh;z-index:6";
+    const mainStyle="flex:1;min-width:0;height:100vh;overflow-y:auto;overflow-x:hidden";
+
+    let treeRows=[];
+    if(this.model){ const rows=[]; const walk=(list,depth)=>{ for(const n of list){ if(n.isFolder){ rows.push(this.folderRow(n,depth,open,read)); if(open.has(n.path)) walk(n.children,depth+1); } else rows.push(this.noteRow(n,depth,read,marks)); } }; walk(this.model.tree,0); treeRows=rows; }
+    const pinned=[...marks].map(p=>nodes.get(p)).filter(n=>n&&n.isNote);
+    const pinnedRows=pinned.map(n=>({ title:n.title, crumb:(n.crumbs[n.crumbs.length-1]||{}).title||"", icon:this.icon("star",13,0,"currentColor"), onMain:()=>this.go("note",n.path) }));
+
+    const curNode=(s.view!=="home")?nodes.get(s.path):null;
+    const crumbs=s.view==="home"?[{label:"PaperNotes",sep:false,style:this.crumbStyle(true),onClick:()=>{}}]:this.crumbsFor(s.view,curNode);
+
+    const out={
+      loaded:s.loaded, family:s.family, mode:s.mode, glassAttr:glassOn?"on":"off", glassOn, glassOff:!glassOn, paper:s.paper, density:s.density, fontScale:s.fontScale,
+      measurePx:MEASURES[s.measure]+"px", wallpaperUrl:WP[s.wallpaper], wallScrim,
+      sidebarOpen:s.sidebarOpen, sidebarStyle, resizeStyle, mainStyle,
+      showOpenBtn:!s.sidebarOpen, showMobileScrim:mobile&&s.sidebarOpen,
+      onToggleSidebar:()=>this.setS({sidebarOpen:!s.sidebarOpen}), onStartResize:e=>this.startResize(e),
+      onOpenPalette:()=>this.openPalette(), onOpenSettings:()=>this.setState({settingsOpen:true}),
+      onToggleGlass:()=>this.setS({glass:!s.glass}), onAddWidgetQuick:()=>this.setState({settingsOpen:true}),
+      treeRows, hasPinned:pinned.length>0, pinnedRows, crumbs,
+      iconSearch:this.icon("search",16), iconSearchLg:this.icon("search",19), iconPanel:this.icon("panel",17), iconSettings:this.icon("settings",16),
+      iconStarSmall:this.icon("star",12,0,"currentColor"), iconWidget:this.icon("widget",16), iconGlass:this.icon("image",16),
+      iconMessage:this.icon("message",14), iconTrash:this.icon("trash",14), iconPlus:this.icon("plus",15), iconClose:this.icon("x",15),
+      iconTimer:this.icon("timer",15), iconClock:this.icon("clock",15),
+      isHome:s.view==="home", isBrowse:s.view==="browse", isNote:s.view==="note",
+      widgetViews:this.widgetViews(),
+      buddyEnabled:s.buddyEnabled, buddyText:s.buddyText, buddyShown:s.buddyShown, buddyChar:EXPR[s.exprIdx],
+      buddyBtnStyle:"width:52px;height:38px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:16px;font-weight:600;color:var(--accent);background:var(--card);border:1px solid var(--edge);border-radius:12px;cursor:pointer;box-shadow:0 6px 18px var(--shadow),var(--glass-hi);backdrop-filter:blur(var(--blur)) saturate(var(--sat));transition:transform .09s ease",
+      onPokeBuddy:()=>this.pokeBuddy(),
+      lightboxSrc:s.lightbox, onCloseLightbox:()=>this.setState({lightbox:null}),
+      onPaletteScrim:e=>{ if(e.target===e.currentTarget) this.closePalette(); },
+      onSettingsScrim:e=>{ if(e.target===e.currentTarget) this.setState({settingsOpen:false}); },
+    };
+    Object.assign(out,this.homeVals(read,marks,nodes));
+    Object.assign(out,this.browseVals(curNode,read,marks));
+    Object.assign(out,this.noteVals(curNode,read,marks));
+    Object.assign(out,this.paletteVals());
+    Object.assign(out,this.settingsVals());
+    return out;
+  }
+
+  folderRow(n,depth,open,read){ const isOpen=open.has(n.path); const done=this.notesUnder(n).filter(x=>read.has(x.path)).length; const pl=8+depth*15;
+    return { onMain:()=>this.toggleFolder(n.path), rowStyle:"display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:none;border-radius:6px;cursor:pointer;color:var(--ink);height:calc(var(--row) - 2px);padding:0 26px 0 "+pl+"px",
+      twStyle:"display:flex;width:12px;color:"+(isOpen?"var(--accent)":"var(--ink-faint)")+";transform:rotate("+(isOpen?"90deg":"0")+")", tw:this.icon("chevron",13),
+      icon:this.icon("folder",15), iconColor:"var(--accent)",
+      nameStyle:"font-family:var(--read);font-size:15px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap", title:n.title,
+      meta:done?done+"/"+n.noteTotal:String(n.noteTotal),
+      rightIcon:this.icon("chevron",13), rightTitle:"open folder page", rightStyle:"position:absolute;right:4px;top:50%;transform:translateY(-50%);display:flex;background:none;border:none;cursor:pointer;color:var(--ink-faint);padding:4px;border-radius:5px", onRight:e=>{ e.stopPropagation(); this.go("browse",n.path); } }; }
+  noteRow(n,depth,read,marks){ const done=read.has(n.path),marked=marks.has(n.path); const pl=8+depth*15+14;
+    return { onMain:()=>this.go("note",n.path), rowStyle:"display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:none;border-radius:6px;cursor:pointer;color:var(--ink);height:calc(var(--row) - 4px);padding:0 26px 0 "+pl+"px",
+      twStyle:"display:flex;width:12px;color:"+(done?"var(--accent)":"var(--ink-faint)"), tw:done?this.icon("check",12):this.icon("circle",9),
+      icon:this.icon("file",14), iconColor:"var(--ink-soft)",
+      nameStyle:"font-family:var(--ui);font-size:13.5px;color:"+(done?"var(--ink-soft)":"var(--ink)")+";overflow:hidden;text-overflow:ellipsis;white-space:nowrap", title:n.title,
+      meta:n.minutes+"m",
+      rightIcon:this.icon("star",13,0,marked?"currentColor":"none"), rightTitle:"pin", rightStyle:"position:absolute;right:4px;top:50%;transform:translateY(-50%);display:flex;background:none;border:none;cursor:pointer;color:"+(marked?"var(--accent)":"var(--ink-faint)")+";padding:4px;border-radius:5px", onRight:e=>{ e.stopPropagation(); this.toggleMark(n.path); } }; }
+
+  widgetViews(){ const s=this.state; const pm=Math.floor(s.pomoRemaining/60),ps=s.pomoRemaining%60; const pmTotal=(s.pomoMode==="focus"?s.pomoFocus:s.pomoBreak)*60; const pct=pmTotal?Math.round((1-s.pomoRemaining/pmTotal)*100):0; const barColor=s.pomoMode==="focus"?"var(--accent)":"#6bbf83"; const now=new Date(s.now);
+    const pips=Array.from({length:s.pomoRounds},(_,i)=> i<s.pomoRound-1 ? "◆" : (i===s.pomoRound-1 && !s.pomoDone ? "◈" : (s.pomoDone?"◆":"◇"))).join(" ");
+    const label=s.pomoDone?"done · "+s.pomoRounds+" rounds":(s.pomoMode==="focus"?"focus · round "+s.pomoRound+"/"+s.pomoRounds:"break · round "+s.pomoRound+"/"+s.pomoRounds);
+    return s.widgets.map(w=>{ const base={ id:w.id, isPomo:w.type==="pomodoro", isClock:w.type==="clock", style:"position:fixed;left:"+w.x+"px;top:"+w.y+"px;z-index:34;width:206px;background:color-mix(in oklab, var(--cardS) 92%, transparent);border:1px solid var(--edge);border-radius:12px;box-shadow:0 14px 38px var(--shadow),var(--glass-hi);backdrop-filter:blur(24px) saturate(1.6);overflow:hidden", gripIcon:this.icon("grip",13), onGrab:e=>this.startWidgetDrag(w.id,e), onRemove:()=>this.removeWidget(w.id), title:w.type };
+      if(w.type==="pomodoro"){ return {...base, label, labelColor:s.pomoDone?"var(--accent)":(s.pomoMode==="focus"?"var(--accent)":"#6bbf83"), sessions:pips, time:s.pomoDone?"✓":String(pm).padStart(2,"0")+":"+String(ps).padStart(2,"0"), pct:s.pomoDone?100:pct, barColor, runIcon:s.pomoRunning?this.icon("pause",14,0,"currentColor"):this.icon("play",14,0,"currentColor"), resetIcon:this.icon("reset",13), skipIcon:this.icon("skip",13), onToggle:()=>this.pomoToggle(), onReset:()=>this.pomoReset(), onSkip:()=>this.skipPomo(), onMute:()=>this.setS({pomoMuted:!s.pomoMuted}), volIcon:s.pomoMuted?this.icon("volumeX",13):this.icon("volume",13), volLabel:s.pomoMuted?"muted":"chime" }; }
+      return {...base, clockTime:now.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit",second:"2-digit"}), clockDate:now.toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"}).toLowerCase() }; }); }
+
+  homeVals(read,marks,nodes){ const s=this.state; if(s.view!=="home"||!this.model) return {}; const h=new Date().getHours(); const greeting=h<5?"still up?":h<12?"good morning":h<18?"good afternoon":"good evening";
+    const total=this.model.order.length,done=this.model.order.filter(p=>read.has(p)).length;
+    const recents=s.recents.map(p=>nodes.get(p)).filter(n=>n&&n.isNote).slice(0,6);
+    const folders=this.model.tree.filter(n=>n.isFolder);
+    return { greeting, dateLine:new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"}).toLowerCase(), cozyLine:s.cozy,
+      statPages:done+" / "+total, progressPct:total?Math.round(done/total*100):0, statFolders:folders.length, statNotesLine:total+" notes on the shelf",
+      statWidgets:s.widgets.length?s.widgets.length+" on the page":"none yet",
+      hasRecents:recents.length>0, recentChips:recents.map(n=>({ icon:this.icon("file",14), title:n.title, onClick:()=>this.go("note",n.path) })),
+      folderCards:folders.map(f=>{ const all=this.notesUnder(f),rd=all.filter(x=>read.has(x.path)).length; return { icon:this.icon("folder",18), title:f.title, blurb:f.blurb||"", count:f.noteTotal+" notes", pct:all.length?Math.round(rd/all.length*100):0, onClick:()=>this.go("browse",f.path) }; }) }; }
+
+  browseVals(node,read,marks){ const s=this.state; if(s.view!=="browse"||!node||!node.isFolder) return {}; const all=this.notesUnder(node),rd=all.filter(x=>read.has(x.path)).length; const folders=node.children.filter(c=>c.isFolder),notes=node.children.filter(c=>c.isNote);
+    return { browseIcon:this.icon("folder",26), browseTitle:node.title, browseTagline:node.tagline||"", browseBlurb:node.blurb||"", browsePct:all.length?Math.round(rd/all.length*100):0, browseProgText:rd+"/"+all.length+" read",
+      browseHasFolders:folders.length>0, browseFolders:folders.map(f=>({ icon:this.icon("folder",18), title:f.title, blurb:f.blurb||"", count:f.noteTotal+" notes", onClick:()=>this.go("browse",f.path) })),
+      browseNotesLabel:folders.length?"notes":(notes.length+" notes"),
+      browseNotes:notes.map((n,i)=>({ num:String(i).padStart(2,"0"), title:n.title, blurb:n.blurb||"", min:n.minutes+"m", titleColor:read.has(n.path)?"var(--ink-soft)":"var(--ink)", check:read.has(n.path)?this.icon("check",15):"", star:this.icon("star",15,0,marks.has(n.path)?"currentColor":"none"), starColor:marks.has(n.path)?"var(--accent)":"var(--ink-faint)", onClick:()=>this.go("note",n.path), onStar:()=>this.toggleMark(n.path) })) }; }
+
+  noteVals(node,read,marks){ const s=this.state; if(s.view!=="note"||!node||!node.isNote){ this._nav=null; return {}; } if(!this.artRef) this.artRef=React.createRef();
+    const folder=node.crumbs.length?this.model.nodes.get(node.crumbs[node.crumbs.length-1].path):null;
+    const siblings=folder?folder.children.filter(c=>c.isNote):[node]; const idx=siblings.indexOf(node),prev=siblings[idx-1],next=siblings[idx+1]; this._nav={prev,next};
+    const isRead=read.has(node.path),marked=marks.has(node.path);
+    const cms=this.commentsFor(node.path);
+    return { artRef:this.artRef, noteIcon:this.icon("file",15), noteKicker:(folder?folder.title+" · ":"")+"page "+String(idx).padStart(2,"0")+" · "+node.minutes+" min read", noteCrumbs:this.crumbsFor("note",node),
+      showOutline:s.outline.length>=2&&s.vw>1080, outline:s.outline.map(o=>({ text:o.text, onClick:()=>this.scrollToHead(o.id), style:"font-family:var(--ui);font-size:12.5px;color:var(--ink-soft);background:none;border:none;border-left:2px solid transparent;text-align:left;cursor:pointer;line-height:1.4;padding:4px 10px"+(o.level>=2?";padding-left:"+(10+(o.level-1)*12)+"px":"")+(o.level>=3?";font-size:12px":"") })),
+      onMarkRead:()=>this.toggleRead(node.path), markReadIcon:isRead?this.icon("check",14):this.icon("circle",13), markReadLabel:isRead?"read":"mark read", markReadStyle:"display:inline-flex;align-items:center;gap:9px;font-family:var(--ui);font-size:13px;font-weight:600;color:"+(isRead?"var(--accent)":"var(--ink-soft)")+";background:"+(isRead?"var(--accent-soft)":"var(--panel)")+";border:1px solid "+(isRead?"transparent":"var(--edge)")+";border-radius:8px;padding:9px 15px;cursor:pointer",
+      onPinNote:()=>this.toggleMark(node.path), pinNoteIcon:this.icon("star",14,0,marked?"currentColor":"none"), pinNoteLabel:marked?"pinned":"pin page", pinNoteStyle:"display:inline-flex;align-items:center;gap:8px;font-family:var(--ui);font-size:13px;font-weight:600;color:"+(marked?"var(--accent)":"var(--ink-soft)")+";background:"+(marked?"var(--accent-soft)":"var(--panel)")+";border:1px solid "+(marked?"transparent":"var(--edge)")+";border-radius:8px;padding:9px 14px;cursor:pointer",
+      commentCount:cms.length?"· "+cms.length:"", comments:cms.slice().reverse().map(cm=>({ text:cm.text, when:new Date(cm.ts).toLocaleDateString(undefined,{day:"numeric",month:"short"})+" · "+new Date(cm.ts).toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"}), onDelete:()=>this.delComment(cm.id) })),
+      commentDraft:s.commentDraft, onCommentInput:e=>this.setState({commentDraft:e.target.value}), onCommentKey:e=>{ if((e.metaKey||e.ctrlKey)&&e.key==="Enter") this.addComment(); }, onAddComment:()=>this.addComment(),
+      hasPrev:!!prev, hasNext:!!next, prevTitle:prev?prev.title:"", nextTitle:next?next.title:"", onPrev:()=>prev&&this.go("note",prev.path), onNext:()=>next&&this.go("note",next.path) }; }
+
+  paletteVals(){ const s=this.state; if(!s.paletteOpen) return { paletteOpen:false }; const q=s.paletteQuery.trim(); const groups=[],flat=[];
+    const noteRow=(n,tag)=>({ icon:this.icon("file",15), iconColor:"var(--ink-soft)", title:n.title, sub:true, subText:(n.crumbs||[]).map(c=>c.title).join(" / "), tag:!!tag, tagText:tag||"", hint:true, run:()=>this.runCmd(()=>this.go("note",n.path)) });
+    const folderRow=f=>({ icon:this.icon("folder",15), iconColor:"var(--accent)", title:f.title, sub:true, subText:(f.crumbs||[]).map(c=>c.title).join(" / ")||"top level", tag:true, tagText:"folder", hint:true, run:()=>this.runCmd(()=>this.go("browse",f.path)) });
+    const cmd=(ic,title,subText,run)=>({ icon:this.icon(ic,15), iconColor:"var(--accent)", title, sub:!!subText, subText:subText||"", tag:false, hint:true, run:()=>this.runCmd(run) });
+    const commands=[
+      cmd("timer","Add pomodoro widget",null,()=>this.addWidget("pomodoro")),
+      cmd("clock","Add clock widget",null,()=>this.addWidget("clock")),
+      cmd(s.mode==="dark"?"sun":"moon","Toggle light / dark",s.mode,()=>this.setS({mode:s.mode==="dark"?"light":"dark"})),
+      cmd("image","Toggle paper / glass",s.glass?"currently glass":"currently paper",()=>this.setS({glass:!s.glass})),
+      cmd("widget","Cycle theme",FAMILY_META[s.family].name,()=>{ const t=FAMILIES[(FAMILIES.indexOf(s.family)+1)%FAMILIES.length]; this.setS({family:t}); }),
+      cmd("settings","Open settings",null,()=>this.setState({settingsOpen:true})),
+    ];
+    if(!q){ const rec=s.recents.map(p=>this.model&&this.model.nodes.get(p)).filter(n=>n&&n.isNote).slice(0,5); if(rec.length){ const rows=rec.map(n=>noteRow(n)); groups.push({label:"recent",rows}); flat.push(...rows); } groups.push({label:"actions",rows:commands}); flat.push(...commands); }
+    else { const {local,global,folders}=this.search(q);
+      const top=[...folders.slice(0,3).map(folderRow),...local.slice(0,20).map(n=>noteRow(n))]; if(top.length){ groups.push({label:"notes",rows:top}); flat.push(...top); }
+      const g=global.slice(0,12).map(n=>noteRow(n,"in text")); if(g.length){ groups.push({label:"found in note text",rows:g}); flat.push(...g); }
+      const cm=commands.filter(c=>c.title.toLowerCase().includes(q.toLowerCase())); if(cm.length){ groups.push({label:"actions",rows:cm}); flat.push(...cm); } }
+    this._palFlat=flat; let i=0;
+    groups.forEach(g=>g.rows.forEach(r=>{ const active=i===s.palIdx,my=i; r.style="display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:"+(active?"var(--panel)":"none")+";border:none;border-radius:9px;padding:9px 12px;cursor:pointer"; r.onClick=r.run; r.onHover=()=>{ if(this.state.palIdx!==my) this.setState({palIdx:my}); }; i++; }));
+    return { paletteOpen:true, paletteQuery:s.paletteQuery, onPaletteInput:e=>this.setState({paletteQuery:e.target.value,palIdx:0}), palGroups:groups, palEmpty:flat.length===0 }; }
+
+  settingsVals(){ const s=this.state; if(!s.settingsOpen) return { settingsOpen:false };
+    const setLabel="font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin:16px 0 8px";
+    const setLabel2="font-family:var(--ui);font-size:13.5px;font-weight:600;color:var(--ink)";
+    const setLabel3="font-family:var(--ui);font-size:12.5px;color:var(--ink-soft)";
+    const smallSeg=this.segWrap()+";flex:none";
+    return { settingsOpen:true, onCloseSettings:()=>this.setState({settingsOpen:false}), setLabel, setLabel2, setLabel3, setSeg:this.segWrap(), setSeg2:smallSeg,
+      modeOpts:this.seg([{l:"Light",v:"light"},{l:"Dark",v:"dark"}],s.mode,v=>this.setS({mode:v})),
+      surfaceOpts:this.seg([{l:"Paper",v:false},{l:"Glass",v:true}],s.glass,v=>this.setS({glass:v})),
+      themeOpts:FAMILIES.map(f=>{ const m=FAMILY_META[f],pal=m[s.mode]||m.light,sel=s.family===f; return { name:m.name, accent:pal.accent, canvas:pal.canvas, ink:pal.ink, onClick:()=>this.setS({family:f}), style:"display:flex;align-items:center;padding:10px 10px;border-radius:9px;cursor:pointer;background:"+pal.canvas+";border:2px solid "+(sel?pal.accent:"transparent")+";box-shadow:"+(sel?"0 0 0 2px var(--card)":"0 0 0 1px var(--edge)") }; }),
+      wallpaperOpts:["coast","ridges","swirl"].map(w=>({ title:WP_NAME[w], onClick:()=>this.setS({wallpaper:w}), style:"flex:1;height:38px;border-radius:7px;cursor:pointer;background-size:cover;background-position:center;background-image:url("+WP[w]+");border:2px solid "+(s.wallpaper===w?"var(--accent)":"var(--edge)") })),
+      paperOpts:this.seg([{l:"Grid",v:"grid"},{l:"Dots",v:"dots"},{l:"Plain",v:"plain"}],s.paper,v=>this.setS({paper:v})),
+      densityOpts:this.seg([{l:"Compact",v:"compact"},{l:"Comfortable",v:"comfortable"}],s.density,v=>this.setS({density:v})),
+      fontScaleVal:s.fontScale, fontScaleLabel:Math.round(s.fontScale*100)+"%", onFontScale:e=>{ this._forceArt=true; this.setS({fontScale:parseFloat(e.target.value)}); },
+      measureOpts:this.seg([{l:"Narrow",v:"narrow"},{l:"Normal",v:"normal"},{l:"Wide",v:"wide"}],s.measure,v=>this.setS({measure:v})),
+      pomoFocusOpts:this.seg([{l:"15",v:15},{l:"25",v:25},{l:"50",v:50}],s.pomoFocus,v=>this.setPomoLen("pomoFocus",v)),
+      pomoBreakOpts:this.seg([{l:"5",v:5},{l:"10",v:10},{l:"15",v:15}],s.pomoBreak,v=>this.setPomoLen("pomoBreak",v)),
+      pomoRoundOpts:this.seg([{l:"1",v:1},{l:"2",v:2},{l:"4",v:4},{l:"6",v:6}],s.pomoRounds,v=>this.setS({pomoRounds:v})),
+      onAddPomo:()=>this.addWidget("pomodoro"), onAddClock:()=>this.addWidget("clock"),
+      onToggleBuddy:()=>this.setS({buddyEnabled:!s.buddyEnabled}), buddyToggleStyle:this.toggleStyle(s.buddyEnabled), buddyKnobStyle:this.knobStyle(s.buddyEnabled),
+      onToggleChime:()=>this.setS({pomoMuted:!s.pomoMuted}), chimeToggleStyle:this.toggleStyle(!s.pomoMuted), chimeKnobStyle:this.knobStyle(!s.pomoMuted) }; }
+}
+</script>
 </body>
 </html>
