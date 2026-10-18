@@ -1,0 +1,385 @@
+/* The rendered note.
+
+   Everything here is scoped under `.note-content`, which is the content
+   region from §4.1 — the part of the screen the application is *showing*
+   rather than the part it *is*. A note's own <style> block is rewritten at
+   render time so its selectors are also trapped inside this scope: a note
+   can style itself freely and still cannot repaint the toolbar, the tree,
+   or anything else that belongs to the app.
+
+   Typography follows the topic rule (§7.1a): the reading voice is the
+   serif, and it holds for everything the reader reads slowly — headings
+   and prose alike. The sans is the UI voice and never appears in here;
+   the monospace is the data voice and appears only in code, paths and
+   numbers. Sizes come from the fixed scale in §7.2 and do not change with
+   density or viewport.                                                */
+
+.note-content {
+  font-family: var(--font-reading);
+  font-size: var(--type-body);
+  line-height: var(--reader-leading);
+  color: var(--ink-primary);
+  overflow-wrap: break-word;
+}
+
+.note-content > * + * { margin-top: var(--reader-para); }
+
+/* ── Headings ───────────────────────────────────────────────────────*/
+.note-content h1,
+.note-content h2,
+.note-content h3,
+.note-content h4,
+.note-content h5,
+.note-content h6 {
+  font-family: var(--font-reading);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+  letter-spacing: -0.01em;
+  scroll-margin-top: var(--space-4);
+}
+.note-content h1 { font-size: var(--type-h1); }
+.note-content h2 { font-size: var(--type-h2); }
+.note-content h3 { font-size: var(--type-h3); }
+/* h4 and below have no token of their own and must not invent one, so
+   they take the body size and separate by weight (§7.3). */
+.note-content h4,
+.note-content h5,
+.note-content h6 { font-size: var(--type-body); }
+.note-content h5, .note-content h6 { color: var(--ink-secondary); }
+
+.note-content > h2 { margin-top: var(--gap-section); }
+.note-content > h3 { margin-top: var(--gap-group); }
+
+/* The anchor link appears on hover of its heading only — a permanently
+   visible ¶ on every heading is noise (Patterns §1's clear-button rule,
+   applied to the same instinct). */
+.heading-anchor {
+  margin-left: var(--space-2);
+  color: var(--ink-tertiary);
+  text-decoration: none;
+  font-family: var(--font-ui);
+  font-size: var(--type-caption);
+  opacity: 0;
+  transition: opacity var(--dur-micro) var(--ease-enter);
+}
+.note-content :is(h1,h2,h3,h4,h5,h6):hover .heading-anchor,
+.heading-anchor:focus-visible { opacity: 1; }
+
+/* ── Prose ──────────────────────────────────────────────────────────*/
+.note-content strong { font-weight: 600; }
+.note-content em { font-style: italic; }
+.note-content small { font-size: var(--type-caption); color: var(--ink-secondary); }
+.note-content mark {
+  background: var(--accent-muted);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 2px;
+}
+.note-content a { color: var(--accent); }
+.note-content a:hover { text-decoration-thickness: 2px; }
+.note-content a[data-missing="true"] {
+  color: var(--tone-brick);
+  text-decoration-style: dotted;
+  cursor: help;
+}
+
+.note-content ul, .note-content ol { padding-left: var(--space-4); }
+.note-content li + li { margin-top: calc(var(--reader-para) / 2); }
+.note-content li > ul, .note-content li > ol { margin-top: calc(var(--reader-para) / 2); }
+
+.note-content blockquote {
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--hairline-strong);
+  color: var(--ink-secondary);
+  font-style: italic;   /* the annotation voice, §7.1a */
+}
+
+.note-content hr {
+  border: 0;
+  border-top: 1px solid var(--hairline);
+  margin-block: var(--gap-section);
+}
+
+.note-content img,
+.note-content video {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);   /* a container, so radius-sm (§5.3) */
+  display: block;
+}
+.note-content figure figcaption {
+  margin-top: var(--space-1);
+  font-family: var(--font-ui);
+  font-size: var(--type-caption);
+  color: var(--ink-secondary);
+}
+
+/* ── Task lists ─────────────────────────────────────────────────────
+   A native checkbox, left alone (§1 principle 8). Read-only, because the
+   note on disk is the source of truth and a click here would not reach
+   it — claiming otherwise would be the dishonest version (PI §1.2).   */
+.note-content .task-list { list-style: none; padding-left: var(--space-1); }
+.note-content .task-list-item { display: flex; align-items: baseline; gap: var(--space-2); }
+.note-content .task-list-item input { margin: 0; accent-color: var(--accent); }
+.note-content .task-list-item[data-checked="true"] { color: var(--ink-secondary); }
+
+/* ── Tables, Patterns §4 ────────────────────────────────────────────
+   Row hover for identity rather than vertical rules; numeric columns
+   right-aligned; no nesting.                                          */
+.note-content .table-wrap { overflow-x: auto; }
+.note-content table {
+  border-collapse: collapse;
+  width: 100%;
+  font-family: var(--font-ui);
+  font-size: var(--type-body-sm);
+}
+.note-content th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--ink-secondary);
+  border-bottom: 1px solid var(--hairline-strong);
+}
+.note-content th, .note-content td {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--hairline);
+  vertical-align: top;
+}
+.note-content tbody tr { transition: background-color var(--dur-micro) var(--ease-enter); }
+.note-content tbody tr:hover { background: var(--surface-sunken); }
+.note-content th[align="right"], .note-content td[align="right"] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.note-content th[align="center"], .note-content td[align="center"] { text-align: center; }
+
+/* ── Code, the data voice ───────────────────────────────────────────*/
+.note-content code {
+  font-family: var(--font-data);
+  font-size: 0.92em;
+  background: var(--surface-sunken);
+  padding: 0.1em 0.32em;
+  border-radius: var(--radius-sm);
+}
+.note-content pre {
+  background: var(--surface-sunken);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  overflow-x: auto;
+  line-height: var(--leading-body);
+}
+.note-content pre code {
+  background: none;
+  padding: 0;
+  font-size: var(--type-body-sm);
+}
+.note-content .code-lang {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: var(--type-caption);
+  letter-spacing: var(--tracking-caption);
+  color: var(--ink-tertiary);
+  margin-bottom: var(--space-1);
+}
+
+/* Syntax colours: companions to the accent, all held duller than it
+   (§6.3). No rainbow. */
+.hljs-comment, .hljs-quote { color: var(--ink-tertiary); font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-doctag { color: var(--tone-plum); }
+.hljs-string, .hljs-regexp, .hljs-addition { color: var(--tone-sage); }
+.hljs-number, .hljs-symbol, .hljs-bullet { color: var(--tone-ochre); }
+.hljs-title, .hljs-section, .hljs-name, .hljs-selector-id, .hljs-selector-class { color: var(--accent); }
+.hljs-attr, .hljs-attribute, .hljs-variable, .hljs-template-variable { color: var(--tone-slate); }
+.hljs-type, .hljs-built_in, .hljs-class .hljs-title { color: var(--tone-slate); }
+.hljs-meta { color: var(--ink-secondary); }
+.hljs-deletion { color: var(--tone-brick); }
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: 600; }
+
+/* ── Footnotes ──────────────────────────────────────────────────────*/
+.note-content .footnotes {
+  margin-top: var(--gap-section);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--hairline);
+  font-size: var(--type-body-sm);
+  color: var(--ink-secondary);
+}
+.note-content .footnote-ref a { text-decoration: none; }
+
+/* ── Maths ──────────────────────────────────────────────────────────
+   KaTeX ships its own stylesheet; these are the few places it needs to
+   be told about the theme rather than assuming black on white.       */
+.note-content .katex { font-size: 1.05em; color: var(--ink-primary); }
+.note-content .katex-display {
+  margin: var(--gap-group) 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: var(--space-1) 0;
+}
+.note-content .katex-error {
+  color: var(--tone-brick);
+  font-family: var(--font-data);
+  font-size: var(--type-body-sm);
+  border-bottom: 1px dotted var(--tone-brick);
+  cursor: help;
+}
+
+/* ── Raw HTML in notes ──────────────────────────────────────────────
+   A note may bring its own markup and styles. It gets a real surface to
+   work on, but the boundary stays visible: anything it renders is inside
+   this scope and inherits the content region's colours by default.   */
+.note-content details {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+}
+.note-content summary {
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: var(--type-body-sm);
+  font-weight: 600;
+}
+.note-content kbd {
+  font-family: var(--font-data);
+  font-size: var(--type-caption);
+  border: 1px solid var(--hairline-strong);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  padding: 0.1em 0.4em;
+  background: var(--surface-raised);
+}
+
+/* ── Study-notes extras (markdown.js) ───────────────────────────────
+   Revision notes are allowed more colour than the chrome: the point of
+   {r:…} is to shout. The hues still sit on the paper undertone, and each
+   theme gets its own lightness so nothing turns neon in the dark.      */
+.note-content {
+  --n-red: hsl(4 64% 44%);
+  --n-orange: hsl(24 78% 40%);
+  --n-green: hsl(152 52% 30%);
+  --n-blue: hsl(218 60% 45%);
+  --n-purple: hsl(266 44% 50%);
+  --n-teal: hsl(176 52% 28%);
+  --n-grey: hsl(36 10% 40%);
+  --n-hl: hsl(48 96% 62% / 0.55);
+  --n-tint: 8%;
+}
+:root[data-theme="dark"] .note-content {
+  --n-red: hsl(6 72% 68%);
+  --n-orange: hsl(28 80% 64%);
+  --n-green: hsl(150 44% 60%);
+  --n-blue: hsl(215 76% 72%);
+  --n-purple: hsl(266 64% 76%);
+  --n-teal: hsl(174 44% 58%);
+  --n-grey: hsl(38 10% 68%);
+  --n-hl: hsl(48 80% 50% / 0.32);
+  --n-tint: 11%;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .note-content {
+    --n-red: hsl(6 72% 68%);
+    --n-orange: hsl(28 80% 64%);
+    --n-green: hsl(150 44% 60%);
+    --n-blue: hsl(215 76% 72%);
+    --n-purple: hsl(266 64% 76%);
+    --n-teal: hsl(174 44% 58%);
+    --n-grey: hsl(38 10% 68%);
+    --n-hl: hsl(48 80% 50% / 0.32);
+    --n-tint: 11%;
+  }
+}
+
+.note-content .c-r { color: var(--n-red); font-weight: 600; }
+.note-content .c-o { color: var(--n-orange); font-weight: 600; }
+.note-content .c-g { color: var(--n-green); font-weight: 600; }
+.note-content .c-b { color: var(--n-blue); font-weight: 600; }
+.note-content .c-p { color: var(--n-purple); font-weight: 600; }
+.note-content .c-k {
+  white-space: nowrap;
+  color: var(--n-purple);
+  font-family: var(--font-ui), "Yu Gothic UI", "Meiryo", "Segoe UI Symbol", "Noto Sans JP", sans-serif;
+  font-style: normal;
+}
+.note-content mark.hl {
+  background: linear-gradient(180deg, transparent 30%, var(--n-hl) 30%, var(--n-hl) 92%, transparent 92%);
+  border-radius: 0;
+  padding: 0 0.1em;
+}
+
+.note-content .tag {
+  display: inline-block;
+  font-family: var(--font-ui);
+  font-size: var(--type-caption);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.5;
+  padding: 0 0.5em;
+  border-radius: var(--radius-pill);
+  vertical-align: 0.1em;
+  margin: 0 0.15em;
+  color: var(--tag);
+  background: color-mix(in srgb, var(--tag) 14%, transparent);
+}
+.note-content .tag--off { --tag: var(--n-green); }
+.note-content .tag--me { --tag: var(--n-grey); }
+.note-content .tag--hy { --tag: var(--n-red); }
+.note-content .tag--new { --tag: var(--n-blue); }
+
+.note-content .callout {
+  --co: var(--n-grey);
+  border: 1px solid color-mix(in srgb, var(--co) 38%, transparent);
+  border-left-width: 3px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--co) var(--n-tint), var(--surface-raised));
+  padding: var(--space-2) var(--space-3);
+}
+.note-content .callout__title {
+  font-family: var(--font-ui);
+  font-size: var(--type-caption);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--co);
+  margin-bottom: var(--space-1);
+}
+.note-content .callout__body > * + * { margin-top: calc(var(--reader-para) / 2); }
+.note-content .callout__body > :first-child { margin-top: 0; }
+.note-content .callout--key { --co: var(--n-blue); }
+.note-content .callout--exam { --co: var(--n-orange); }
+.note-content .callout--trap, .note-content .callout--warn { --co: var(--n-red); }
+.note-content .callout--lol { --co: var(--n-purple); }
+.note-content .callout--lol .callout__body { font-style: italic; }
+.note-content .callout--mem { --co: var(--n-green); }
+.note-content .callout--ex, .note-content .callout--code { --co: var(--n-teal); }
+
+.note-content .figure { margin-inline: 0; text-align: center; }
+.note-content .figure img {
+  display: inline-block;
+  max-width: 100%;
+  max-height: 70vh;
+  width: auto;
+  border: 1px solid var(--hairline);
+  background: hsl(0 0% 100%);
+}
+.note-content .figure--big img { max-height: none; }
+.note-content .figure figcaption { text-align: center; }
+
+/* Search-hit highlighting, applied after the note renders. */
+.note-content .search-hit {
+  background: var(--accent-muted);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--accent-faint);
+}
+.note-content .search-hit[data-current="true"] {
+  background: var(--accent);
+  color: var(--ink-on-accent);
+}
+
+/* Print: the graph rule and the chrome are screen furniture. */
+@media print {
+  .topbar, .panel, .statusbar, .toasts, .resizer, .note__nav { display: none !important; }
+  .reader-wrap { overflow: visible; }
+  .reader__sheet { border: 0; padding: 0; }
+  .note-content { font-size: 11pt; }
+}

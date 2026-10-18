@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>PaperNotes</title>
+  <meta name="description" content="PaperNotes: study notes, past papers and school material for AY2026/27 Semester 2.">
+  <meta name="color-scheme" content="light dark">
+
+  <!-- The first paint must already be in the right theme and density. This
+       runs before the stylesheet does anything visible, so there is no flash
+       of the wrong theme on load, and the OS preference is honoured without
+       the user ever being asked (§15.1). -->
+  <script>
+    (function () {
+      try {
+        var saved = JSON.parse(localStorage.getItem('paper-notes/prefs/v1') || '{}');
+        var root = document.documentElement;
+        if (saved.theme === 'light' || saved.theme === 'dark') root.setAttribute('data-theme', saved.theme);
+        root.setAttribute('data-density', saved.density || 'compact');
+        root.setAttribute('data-palette', saved.palette || 'paper');
+        if (saved.treeWidth) root.style.setProperty('--tree-w', saved.treeWidth + 'px');
+      } catch (e) {
+        document.documentElement.setAttribute('data-density', 'compact');
+      }
+    }());
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <noscript>
+    <p style="font:14px system-ui;padding:24px;max-width:50ch">
+      This site renders Markdown in the browser, so it needs JavaScript.
+      The notes themselves are plain <code>.md</code> files in the repository
+      and are perfectly readable there without it.
+    </p>
+  </noscript>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

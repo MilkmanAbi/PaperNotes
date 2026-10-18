@@ -1,0 +1,63 @@
+# Builds the PaperNotes installer and publishes it as a GitHub release when a
+# version tag is pushed:
+#   node scripts/set-version.mjs 2.4.0     (and a "## 2.4.0" entry in CHANGELOG.md)
+#   git commit -am "PaperNotes 2.4.0" && git tag v2.4.0 && git push --follow-tags
+# The app's updater reads these releases (newest by semver, no drafts or
+# pre-releases) and installs PaperNotes-Setup-<version>.exe in one click,
+# after checking its size and the SHA-256 GitHub lists for it.
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to (re)build, e.g. v2.3.0'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      NOTES_CONTENT: docs-seed     # the installer ships no notes; this just keeps the site build quiet
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: The tag matches the version in the source
+        run: node scripts/set-version.mjs --check $env:TAG
+
+      - run: npm ci
+
+      - name: Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+
+      - name: Build PaperNotes and its installer
+        shell: cmd
+        run: desktop\build.bat
+
+      - name: Release notes from CHANGELOG.md
+        shell: pwsh
+        run: node scripts/release-notes.mjs $env:TAG > release-notes.md
+
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: PaperNotes ${{ env.TAG }}
+          body_path: release-notes.md
+          files: desktop/dist/PaperNotes-Setup-*.exe
+          fail_on_unmatched_files: true

@@ -1,0 +1,35 @@
+node_modules/
+dist/
+dist-*/
+
+# Generated from content/ on every build. Committing it would mean a stale
+# index whenever someone edits a note without running the build.
+public/db/
+
+.DS_Store
+*.log
+.vite/
+demo-content/
+
+# Desktop app build output
+desktop/stage/
+desktop/dist/
+desktop/app/
+desktop/PaperNotes.exe
+desktop/test/out/
+content/.papernotes/
+
+# Your own library and anything made from it never belongs in the repo.
+content/
+search-text/
+info.md
+timetable.csv
+
+# Fetched or built by desktop\build.bat
+desktop/third_party/
+desktop/mcp/server.mjs
+desktop/*.obj
+desktop/*.res
+
+# Relax mode's video: bring your own (see src/ui/relax.js)
+desktop/relax/

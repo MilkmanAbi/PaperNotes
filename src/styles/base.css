@@ -1,0 +1,267 @@
+/* Reset, canvas texture, and the shared control primitives.
+   Standard controls behave the way people already expect (§1 principle 8);
+   the personality budget is spent in a few named places, not here. */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 100%; /* never override the user's display size (§15.1) */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-ui);
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
+  color: var(--ink-primary);
+  background: var(--surface-canvas);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, h6, p, figure, ul, ol, dl, pre, blockquote {
+  margin: 0;
+}
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a { color: var(--accent); text-underline-offset: 0.18em; }
+
+::selection {
+  background: var(--accent-muted);
+  color: var(--ink-primary);
+}
+
+/* ── The graph-ruled canvas, §2.4 ─────────────────────────────────────
+   1px rules at 24px, 4–6% opacity. Panels and the note sheet lay opaque
+   surfaces over it, so it is only ever visible in the gutters and behind
+   empty states — never behind dense text.
+
+   The alpha lives in the line colour itself rather than in an overlay
+   element. An overlay would be the obvious way to dim it, but inside a
+   scrolling container an absolutely positioned overlay scrolls away with
+   the content and leaves the rules at full strength further down the page.
+   One background, no extra element, correct at any scroll offset.         */
+.canvas-rule {
+  background-color: var(--surface-canvas);
+  background-image:
+    linear-gradient(to right, var(--rule-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--rule-line) 1px, transparent 1px);
+  background-size: var(--rule-step) var(--rule-step);
+  background-position: -1px -1px;
+  background-attachment: local;
+}
+
+/* ── Focus, §12.2 ────────────────────────────────────────────────────
+   2px accent ring, offset 2px. Never a glow, never hover-only.        */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+:focus:not(:focus-visible) { outline: none; }
+
+/* ── Buttons, §11.1 ──────────────────────────────────────────────────
+   Boxy at radius-sm. Height from the density mode, never above it.    */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: var(--bar-h);
+  padding: 0 var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--ink-on-accent);
+  font-size: var(--type-body-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--dur-micro) var(--ease-enter);
+}
+.btn:hover { background: var(--accent-hover); }
+.btn:active { transform: translateY(1px); }
+
+.btn--secondary {
+  background: var(--surface-sunken);
+  color: var(--ink-primary);
+  border-color: var(--hairline);
+}
+.btn--secondary:hover { background: var(--surface-canvas); }
+
+.btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--accent);
+  padding: 0 var(--space-2);
+}
+.btn--ghost:hover { background: var(--accent-faint); }
+
+.btn[disabled] { cursor: default; opacity: 0.7; }
+
+/* Icon buttons: square, radius-sm, label carried by title/aria (§10 — an
+   icon is never the only affordance for anything destructive, and none of
+   these are destructive). */
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: var(--bar-h);
+  height: var(--bar-h);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  transition: background-color var(--dur-micro) var(--ease-enter),
+              color var(--dur-micro) var(--ease-enter);
+}
+.icon-btn:hover { background: var(--surface-sunken); color: var(--ink-primary); }
+.icon-btn:active { background: var(--surface-sunken); transform: translateY(1px); }
+.icon-btn[aria-pressed="true"] {
+  background: var(--accent-muted);
+  color: var(--ink-primary);
+}
+.icon-btn svg { width: 16px; height: 16px; display: block; }
+
+/* Stroke iconography, §10: one family, 1.5px, 20/24 canvas, no fills. */
+.icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+/* ── Segmented control ───────────────────────────────────────────────
+   For density and theme. A box, not a pill — it contains options.     */
+.segmented {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+}
+.segmented button {
+  height: calc(var(--bar-h) - 8px);
+  min-width: var(--space-4);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--ink-secondary);
+  font-size: var(--type-caption);
+  letter-spacing: var(--tracking-caption);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--dur-micro) var(--ease-enter),
+              color var(--dur-micro) var(--ease-enter);
+}
+.segmented button:hover { color: var(--ink-primary); background: var(--surface-canvas); }
+.segmented button[aria-pressed="true"] {
+  background: var(--accent-muted);
+  color: var(--ink-primary);
+}
+
+/* ── Search bar, §5.2 + Patterns §1 ──────────────────────────────────
+   A bar, so pill radius, with its radius equal to half its height so the
+   ends are true semicircles. 16px icon at space-2 from the edge. The
+   clear button exists only when there is something to clear.          */
+.searchbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: var(--bar-h);
+  padding: 0 var(--space-2);
+  background: var(--surface-sunken);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  transition: border-color var(--dur-micro) var(--ease-enter);
+}
+.searchbar:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.searchbar .icon { color: var(--ink-secondary); margin-left: var(--space-1); }
+.searchbar input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  font-size: var(--type-body-sm);
+  outline: none;
+}
+.searchbar input::placeholder { color: var(--ink-tertiary); }
+.searchbar .clear {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink-secondary);
+  cursor: pointer;
+}
+.searchbar .clear:hover { background: var(--surface-canvas); color: var(--ink-primary); }
+
+/* ── Chips, Patterns §1 — bar-shaped, so pill radius ─────────────────*/
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 20px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  border: 1px solid var(--hairline);
+  color: var(--ink-secondary);
+  font-size: var(--type-caption);
+  letter-spacing: var(--tracking-caption);
+  white-space: nowrap;
+}
+.chip--tag { color: var(--tone-slate); border-color: var(--hairline); }
+.chip button { border: 0; background: none; color: inherit; cursor: pointer; padding: 0; }
+
+/* ── Scrollbars: standard behaviour, quietly tinted (§1 principle 8) ──*/
+.scroll { overflow: auto; scrollbar-width: thin; scrollbar-color: var(--ink-tertiary) transparent; }
+.scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+.scroll::-webkit-scrollbar-track { background: transparent; }
+.scroll::-webkit-scrollbar-thumb {
+  background: var(--ink-tertiary);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: var(--radius-pill);
+}
+.scroll::-webkit-scrollbar-thumb:hover { background-clip: content-box; background-color: var(--ink-secondary); }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.mono { font-family: var(--font-data); font-variant-ligatures: none; }
+.caption {
+  font-size: var(--type-caption);
+  letter-spacing: var(--tracking-caption);
+  color: var(--ink-tertiary);
+}

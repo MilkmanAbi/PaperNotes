@@ -1,0 +1,233 @@
+/* ───────────────────────────────────────────────────────────────────────
+   Tokens — PaperDesign §2 (grid), §5 (shape), §6 (color), §7 (type),
+   §8 (elevation), §12 (motion), §13 (density).
+
+   The palette below is this application's own, derived from the *method*
+   in §6.2–6.3 rather than copied from anywhere: one undertone (warm paper,
+   ~38°), four neutral steps, one muted accent, companions held at or below
+   the accent's saturation. A notes app gets an olive accent (§15.2's own
+   example); swap `--accent-*` and nothing else needs to move.
+   ─────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ── Grid, §2.1–2.2 ───────────────────────────────────────────────── */
+  --u: 8px;
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --space-6: 48px;
+  --space-8: 64px;
+
+  /* ── Shape, §5.1. Two radii. There is no third. ───────────────────── */
+  --radius-sm: 4px;
+  --radius-pill: 999px;
+
+  /* ── Type, §7.2. 14px base, 1.2 ratio. h1 is the ceiling. ─────────── */
+  --font-ui: "Inter", "Public Sans", -apple-system, BlinkMacSystemFont,
+             "Segoe UI", system-ui, sans-serif;
+  --font-reading: "Source Serif 4", "Iowan Old Style", "Charter",
+                  "Georgia", "Times New Roman", serif;
+  --font-data: "JetBrains Mono", "SF Mono", "Cascadia Mono", "Consolas",
+               ui-monospace, monospace;
+
+  --type-display: 34px;
+  --type-h1: 24px;
+  --type-h2: 20px;
+  --type-h3: 17px;
+  --type-body: 14px;
+  --type-body-sm: 13px;
+  --type-caption: 11px;
+
+  --leading-tight: 1.1;
+  --leading-body: 1.35;
+  --tracking-caption: 0.015em;
+
+  /* ── Motion, §12.1 ────────────────────────────────────────────────── */
+  --dur-micro: 100ms;
+  --dur-default: 180ms;
+  --dur-macro: 260ms;
+  --ease-enter: cubic-bezier(0.2, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  /* ── The graph-ruled canvas, §2.4: 1px rules at 24px, 4–6% opacity ── */
+  --rule-step: var(--space-4);
+  --rule-line: hsl(36 14% 12% / 0.055);
+
+  color-scheme: light dark;
+}
+
+/* ── Light theme ─────────────────────────────────────────────────────
+   Paper is never #FFFFFF and ink is never #000000 (§6.4).             */
+:root,
+:root[data-theme="light"] {
+  --surface-canvas: hsl(40 24% 93%);
+  --surface-raised: hsl(42 34% 97.5%);
+  --surface-sunken: hsl(40 18% 88%);
+  --surface-scrim: hsl(36 14% 12% / 0.32);
+
+  --ink-primary: hsl(36 14% 12%);
+  --ink-secondary: hsl(36 10% 40%);
+  --ink-tertiary: hsl(36 9% 62%);
+  --ink-on-accent: hsl(42 34% 97%);
+
+  --accent: hsl(88 30% 30%);
+  --accent-hover: hsl(88 30% 26%);
+  --accent-muted: hsl(88 30% 30% / 0.17);
+  --accent-faint: hsl(88 30% 30% / 0.07);
+
+  /* Companions, §6.3 — every one duller than the accent. */
+  --tone-sage: hsl(150 22% 36%);
+  --tone-ochre: hsl(38 26% 38%);
+  --tone-brick: hsl(8 26% 42%);
+  --tone-slate: hsl(212 18% 42%);
+  --tone-plum: hsl(286 16% 46%);
+
+  --hairline: hsl(36 9% 62% / 0.44);
+  --hairline-strong: hsl(36 10% 50% / 0.6);
+
+  --elevation-1: 0 1px 2px hsl(36 20% 12% / 0.08), 0 1px 1px hsl(36 20% 12% / 0.04);
+  --elevation-2: 0 8px 24px hsl(36 20% 12% / 0.14);
+
+  --rule-line: hsl(36 14% 12% / 0.055);
+}
+
+/* ── Dark theme ──────────────────────────────────────────────────────
+   Not an inversion (§6.4): the same warm undertone at low lightness.  */
+:root[data-theme="dark"] {
+  --surface-canvas: hsl(36 10% 10%);
+  --surface-raised: hsl(36 9% 14.5%);
+  --surface-sunken: hsl(36 12% 7%);
+  --surface-scrim: hsl(36 14% 4% / 0.5);
+
+  --ink-primary: hsl(40 14% 92%);
+  --ink-secondary: hsl(38 10% 68%);
+  --ink-tertiary: hsl(38 8% 46%);
+  --ink-on-accent: hsl(36 12% 9%);
+
+  --accent: hsl(84 32% 62%);
+  --accent-hover: hsl(84 34% 68%);
+  --accent-muted: hsl(84 32% 62% / 0.22);
+  --accent-faint: hsl(84 32% 62% / 0.09);
+
+  --tone-sage: hsl(150 24% 58%);
+  --tone-ochre: hsl(40 28% 60%);
+  --tone-brick: hsl(10 30% 62%);
+  --tone-slate: hsl(212 20% 64%);
+  --tone-plum: hsl(286 18% 66%);
+
+  --hairline: hsl(38 8% 46% / 0.4);
+  --hairline-strong: hsl(38 8% 56% / 0.5);
+
+  --elevation-1: 0 1px 2px hsl(0 0% 0% / 0.4), 0 1px 1px hsl(0 0% 0% / 0.3);
+  --elevation-2: 0 8px 24px hsl(0 0% 0% / 0.5);
+
+  --rule-line: hsl(40 14% 92% / 0.055);
+}
+
+/* OS preference is the first layer (§15.1): with no explicit override on
+   <html>, the system's choice wins — and keeps winning if it changes
+   mid-session, because this is a media query and not a one-time read. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface-canvas: hsl(36 10% 10%);
+    --surface-raised: hsl(36 9% 14.5%);
+    --surface-sunken: hsl(36 12% 7%);
+    --surface-scrim: hsl(36 14% 4% / 0.5);
+
+    --ink-primary: hsl(40 14% 92%);
+    --ink-secondary: hsl(38 10% 68%);
+    --ink-tertiary: hsl(38 8% 46%);
+    --ink-on-accent: hsl(36 12% 9%);
+
+    --accent: hsl(84 32% 62%);
+    --accent-hover: hsl(84 34% 68%);
+    --accent-muted: hsl(84 32% 62% / 0.22);
+    --accent-faint: hsl(84 32% 62% / 0.09);
+
+    --tone-sage: hsl(150 24% 58%);
+    --tone-ochre: hsl(40 28% 60%);
+    --tone-brick: hsl(10 30% 62%);
+    --tone-slate: hsl(212 20% 64%);
+    --tone-plum: hsl(286 18% 66%);
+
+    --hairline: hsl(38 8% 46% / 0.4);
+    --hairline-strong: hsl(38 8% 56% / 0.5);
+
+    --elevation-1: 0 1px 2px hsl(0 0% 0% / 0.4), 0 1px 1px hsl(0 0% 0% / 0.3);
+    --elevation-2: 0 8px 24px hsl(0 0% 0% / 0.5);
+
+    --rule-line: hsl(40 14% 92% / 0.055);
+  }
+}
+
+/* ── Density, §13 ────────────────────────────────────────────────────
+   Three explicit modes, chosen rather than crept into. Type size never
+   changes with density — only spacing does (§13, §3.1 rule 3). Radius
+   is fixed at every mode (§13.1), which is the single rule that keeps
+   Comfortable from sliding into Material.                             */
+:root,
+:root[data-density="compact"] {
+  --row-h: 32px;
+  --bar-h: 32px;
+  --pad-card: var(--space-2);
+  --pad-page: var(--space-4);
+  --gap-group: var(--space-3);
+  --gap-section: var(--space-5);
+  --indent-step: var(--space-3);
+  --reader-leading: 1.62;
+  --reader-para: var(--space-3);
+}
+
+:root[data-density="dense"] {
+  --row-h: 24px;
+  --bar-h: 32px; /* a bar's height comes from its text (§5.2), not density */
+  --pad-card: var(--space-1);
+  --pad-page: var(--space-3);
+  --gap-group: var(--space-2);
+  --gap-section: var(--space-4);
+  --indent-step: var(--space-2);
+  --reader-leading: 1.5;
+  --reader-para: var(--space-2);
+}
+
+:root[data-density="comfortable"] {
+  --row-h: 40px;
+  --bar-h: 40px;
+  --pad-card: var(--space-3);
+  --pad-page: var(--space-6);
+  --gap-group: var(--space-4);
+  --gap-section: var(--space-6);
+  --indent-step: var(--space-4);
+  --reader-leading: 1.75;
+  --reader-para: var(--space-4);
+}
+
+/* ── Reduced motion, §15.1 / PI §5.5 ─────────────────────────────────
+   A behavioural requirement, not a nicety. No exceptions for "this one
+   is really subtle".                                                  */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-micro: 0.01ms;
+    --dur-default: 0.01ms;
+    --dur-macro: 0.01ms;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* High contrast (§15.1): neutrals and borders firm up without the user
+   having to find a toggle inside the app. */
+@media (prefers-contrast: more) {
+  :root {
+    --hairline: var(--ink-secondary);
+    --hairline-strong: var(--ink-primary);
+    --rule-line: var(--ink-tertiary);
+  }
+}

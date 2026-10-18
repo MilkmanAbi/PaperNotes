@@ -1,0 +1,29 @@
+#include <winver.h>
+#include "resource.h"
+
+IDI_APP ICON "papernotes.ico"
+1 24 "papernotes.manifest"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION PN_VERSION_NUM
+PRODUCTVERSION PN_VERSION_NUM
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_APP
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904B0"
+    BEGIN
+      VALUE "FileDescription", "PaperNotes"
+      VALUE "ProductName", "PaperNotes"
+      VALUE "FileVersion", PN_VERSION
+      VALUE "ProductVersion", PN_VERSION
+      VALUE "OriginalFilename", "PaperNotes.exe"
+      VALUE "LegalCopyright", "Abinaash"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1200
+  END
+END
