@@ -492,7 +492,7 @@ async function boot() {
   const split = new SplitView({ shell, store, prefs, router, terminals });
   if (terminals) terminals.onToSide = (s) => split.openTerminal(s);
   // Dev builds expose the parts for desktop/test/cdp.mjs.
-  if (hostInfo?.dev) window.__pn = { terminals, split, state, store, reader, router, tabs: () => tabs, get music() { return music; }, get pomodoro() { return pomodoro; }, avatar, prefs };
+  if (hostInfo?.dev) window.__pn = { terminals, split, state, store, reader, router, tabs: () => tabs, get music() { return music; }, get pomodoro() { return pomodoro; }, get updater() { return updater; }, avatar, prefs };
   attachSelectionBar({
     reader, state, study, toasts,
     onAsk: isDesktop ? (path, opts) => desktop?.claude(path, opts) : null,
