@@ -6,7 +6,8 @@
 
 <p align="center">
   A study app for Windows. Your notes, slides and past papers in one place, with the tools to actually study them.<br>
-  <b><a href="https://github.com/MilkmanAbi/PaperNotes/releases/latest">Download the latest version</a></b> &nbsp;·&nbsp; Windows 10 and 11, 64-bit &nbsp;·&nbsp; free and open source (GPLv3)
+  <b><a href="https://github.com/MilkmanAbi/PaperNotes/releases/latest">Download the latest version</a></b> &nbsp;·&nbsp; Windows 10 and 11, 64-bit &nbsp;·&nbsp; free and open source (GPLv3)<br>
+  Windows may warn you about it the first time: <a href="#windows-protected-your-pc">here is how to get past that</a>.
 </p>
 
 <p align="center">(｀・ω・´)ゞ</p>
@@ -16,6 +17,40 @@
 PaperNotes opens a folder of your school stuff (Markdown notes, PDFs, slides, past papers, anything) and turns it into a place to study. It never moves or converts your files: they stay ordinary files in a folder you pick, so you can still open them anywhere, sync them with OneDrive, or back them up however you like.
 
 I built it for my own semester and then it got a bit out of hand. Now it's yours too ヽ(・∀・)ﾉ
+
+## Install
+
+1. Download **PaperNotes-Setup-x.y.z.exe** from the [latest release](https://github.com/MilkmanAbi/PaperNotes/releases/latest).
+2. Run it. It installs just for you (no admin needed) into `%LOCALAPPDATA%\Programs\PaperNotes`.
+3. On first start, pick the folder with your notes, or let PaperNotes create a new library in `Documents\PaperNotes`.
+
+Starting from a pile of slides and loose notes? Give **[SETUP.md](SETUP.md)** to an AI (Claude, ChatGPT, anything) along with your material: it explains the folder layout and the note format, so the AI can turn everything into a PaperNotes library in one go.
+
+### "Windows protected your PC"
+
+PaperNotes isn't signed with a paid code-signing certificate (it's a student project (；´∀｀)), so Windows doesn't recognise it and may warn you the first time. That's normal for small open-source apps.
+
+- **If you see a blue "Windows protected your PC" box** (that's SmartScreen): click **More info**, then **Run anyway**. You only need to do this once.
+- **If Windows blocks it outright** with no Run anyway button, that's **Smart App Control**, which blocks every app that isn't signed. You can turn it off:
+
+  1. Open Start, search for **Windows Security** and open it.
+
+     <img src="assets/smartscreen/1-search-windows-security.png" alt="Searching for Windows Security in the Start menu" width="520">
+
+  2. Go to **App & browser control**, then click **Smart App Control settings**.
+
+     <img src="assets/smartscreen/2-app-and-browser-control.png" alt="App and browser control in Windows Security" width="620">
+
+  3. Choose **Off**.
+
+     <img src="assets/smartscreen/3-smart-app-control-off.png" alt="Smart App Control set to Off" width="620">
+
+  Then run the installer again.
+
+> [!WARNING]
+> On many versions of Windows, once Smart App Control is turned off it can't be turned back on without resetting Windows. Your other protection (Microsoft Defender antivirus, SmartScreen, the firewall) keeps working either way. If you'd rather not, you can build PaperNotes yourself instead (see below).
+
+You can always check what you're running: every release is built in the open by [GitHub Actions](.github/workflows/release.yml) from the code in this repository, and GitHub shows each installer's SHA-256 on the release page.
 
 ## What it does
 
@@ -52,38 +87,6 @@ I built it for my own semester and then it got a bit out of hand. Now it's yours
 **Looking after your stuff**
 - A backup every day of every note you can edit and everything PaperNotes remembers, kept for 14 days, restorable one file at a time.
 - It can start with Windows and sit quietly in the notification area, so reminders still reach you.
-
-## Install
-
-1. Download **PaperNotes-Setup-x.y.z.exe** from the [latest release](https://github.com/MilkmanAbi/PaperNotes/releases/latest).
-2. Run it. It installs just for you (no admin needed) into `%LOCALAPPDATA%\Programs\PaperNotes`.
-3. On first start, pick the folder with your notes, or let PaperNotes create a new library in `Documents\PaperNotes`.
-
-### "Windows protected your PC"
-
-PaperNotes isn't signed with a paid code-signing certificate (it's a student project (；´∀｀)), so Windows doesn't recognise it and may warn you the first time. That's normal for small open-source apps.
-
-- **If you see a blue "Windows protected your PC" box** (that's SmartScreen): click **More info**, then **Run anyway**. You only need to do this once.
-- **If Windows blocks it outright** with no Run anyway button, that's **Smart App Control**, which blocks every app that isn't signed. You can turn it off:
-
-  1. Open Start, search for **Windows Security** and open it.
-
-     <img src="assets/smartscreen/1-search-windows-security.png" alt="Searching for Windows Security in the Start menu" width="520">
-
-  2. Go to **App & browser control**, then click **Smart App Control settings**.
-
-     <img src="assets/smartscreen/2-app-and-browser-control.png" alt="App and browser control in Windows Security" width="620">
-
-  3. Choose **Off**.
-
-     <img src="assets/smartscreen/3-smart-app-control-off.png" alt="Smart App Control set to Off" width="620">
-
-  Then run the installer again.
-
-> [!WARNING]
-> On many versions of Windows, once Smart App Control is turned off it can't be turned back on without resetting Windows. Your other protection (Microsoft Defender antivirus, SmartScreen, the firewall) keeps working either way. If you'd rather not, you can build PaperNotes yourself instead (see below).
-
-You can always check what you're running: every release is built in the open by [GitHub Actions](.github/workflows/release.yml) from the code in this repository, and GitHub shows each installer's SHA-256 on the release page.
 
 ## Updating
 
