@@ -18,6 +18,7 @@ const THIRD_PARTY = [
   ['markdown-it', 'MIT', 'Vitaly Puzrin, Alex Kocharin', 'https://github.com/markdown-it/markdown-it'],
   ['markdown-it-footnote', 'MIT', 'Vitaly Puzrin, Alex Kocharin', 'https://github.com/markdown-it/markdown-it-footnote'],
   ['KaTeX', 'MIT', 'Khan Academy and contributors', 'https://github.com/KaTeX/KaTeX'],
+  ['PDF.js', 'Apache-2.0', 'Mozilla and contributors', 'https://github.com/mozilla/pdf.js'],
   ['highlight.js', 'BSD-3-Clause', 'Ivan Sagalaev and contributors', 'https://github.com/highlightjs/highlight.js'],
   ['CodeMirror 6', 'MIT', 'Marijn Haverbeke and contributors', 'https://github.com/codemirror/dev'],
   ['Mermaid', 'MIT', 'Knut Sveidqvist and contributors', 'https://github.com/mermaid-js/mermaid'],

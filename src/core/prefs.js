@@ -39,6 +39,8 @@ const DEFAULTS = {
   editorLineNumbers: true,
   spellcheck: true,
   linkPreview: true,          // hover a link to another note: a preview card
+  pdfTools: null,             // the PDF reader's colours and sizes (desktop/pdfview.js)
+  pdfPlaces: null,            // path -> { page, zoom }: where each PDF was left
 };
 
 const EXPANDED_CAP = 600;

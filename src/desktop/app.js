@@ -18,6 +18,7 @@ import { indexNotesFolder } from './indexer.js';
 import { Backlinks } from './backlinks.js';
 import { linkPreviews } from '../ui/preview.js';
 import { attachTreeDrop } from './tree-drop.js';
+import { flushPdf, showPdf } from './pdfview.js';
 import { Editor } from './editor.js';
 import { askName } from '../ui/dialog.js';
 import { useLocalDb } from '../core/db.js';
@@ -86,6 +87,19 @@ export function initDesktop(ctx) {
   });
 
   // ── drag and drop in the Notes panel ──────────────────────────────────
+  // PDFs open in PaperNotes' own reader, where they can be marked up.
+  reader.use({
+    view: async (v) => {
+      if (v.kind !== 'pdf' || !hasFeature('pdfEdit')) return false;
+      try {
+        return await showPdf(v, { toasts, prefs });
+      } catch (err) {
+        console.error(err);
+        toasts.show({ tone: 'error', text: `PaperNotes could not open this PDF itself (${err.message || err}), so Edge's viewer shows it.` });
+        return false;
+      }
+    },
+  });
   attachTreeDrop({ tree, store, toasts, refresh: () => refresh(), router, moveTo: (from, to) => moveTo(from, to), dragOut: hasFeature('dragOut') });
 
   // ── ticking a task, and the notes that link here ──────────────────────
@@ -242,7 +256,7 @@ export function initDesktop(ctx) {
       if (editor.dirty) { pendingRefresh = true; return; }
       scheduleRefresh();
     } else if (ev.event === 'save-then-quit') {
-      Promise.all([editor.save(), state.flush()]).then(([ok]) => { if (ok) call('quit'); });
+      Promise.all([editor.save(), state.flush(), flushPdf()]).then(([ok, , pdf]) => { if (ok && pdf) call('quit'); });
     } else if (ev.event === 'before-close') {
       state.flush();
       prefs.set('tabs', tabs.serialize());

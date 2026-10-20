@@ -4,7 +4,11 @@
  *  offset, so it stays beside the same paragraph when the window is
  *  resized or the note is edited above it. Drag it by its top edge, resize
  *  it from the corner, change its colour, fold it away, or bin it. They are
- *  saved as you type and come back whenever the note is opened again. */
+ *  saved as you type and come back whenever the note is opened again.
+ *
+ *  In the desktop app's PDF reader a sticky is pinned to a spot on a page
+ *  instead ({ page, fx, fy }, fractions of the page), through ctx.pdf from
+ *  desktop/pdfview.js, so it stays put at any zoom. */
 
 import { icon } from './icons.js';
 import { STICKY_COLORS } from '../core/state.js';
@@ -47,7 +51,20 @@ export function attachStickies({ state, reader }) {
     return best;
   }
 
+  /** Where the stickies live: the PDF's pages, or the note's sheet. */
+  const host = () => ctx.pdf?.host || ctx.sheet;
+
   function place(s, el) {
+    el.style.width = `${s.w}px`;
+    el.style.height = s.collapsed ? '' : `${s.h}px`;
+    if (ctx.pdf) {
+      const p = ctx.pdf.toLocal(s);
+      // Never past the right edge, where it would make the pages scroll sideways.
+      const maxLeft = Math.max(0, ctx.pdf.host.clientWidth - Math.min(s.w, ctx.pdf.host.clientWidth) - 4);
+      el.style.left = `${Math.min(Math.max(0, p.left), maxLeft)}px`;
+      el.style.top = `${Math.max(0, p.top)}px`;
+      return;
+    }
     const top = anchorTop(s.line) + s.dy;
     const maxLeft = Math.max(0, ctx.sheet.clientWidth - Math.min(s.w, ctx.sheet.clientWidth) - 4);
     el.style.top = `${Math.max(0, top)}px`;
@@ -106,6 +123,7 @@ export function attachStickies({ state, reader }) {
         bar.removeEventListener('pointermove', move);
         bar.removeEventListener('pointerup', up);
         el.classList.remove('is-dragging');
+        if (ctx.pdf) { state.updateSticky(ctx.path, s.id, ctx.pdf.fromLocal(el.offsetLeft, el.offsetTop)); return; }
         const y = el.offsetTop;
         const a = anchorFor(y);
         state.updateSticky(ctx.path, s.id, { line: a.line, dy: Math.round(y - a.top), dx: el.offsetLeft });
@@ -120,6 +138,9 @@ export function attachStickies({ state, reader }) {
       if (s.collapsed || !el.isConnected) return;
       clearTimeout(sizeTimer);
       sizeTimer = setTimeout(() => {
+        // Only a size it really has on screen: a hidden or detached sticky
+        // measures 0 (a viewer redrawing, the note being left).
+        if (!el.isConnected || !el.offsetParent) return;
         const w = el.offsetWidth;
         const h = el.offsetHeight;
         if (Math.abs(w - s.w) > 2 || Math.abs(h - s.h) > 2) state.updateSticky(ctx.path, s.id, { w, h }, { quiet: true });
@@ -155,14 +176,17 @@ export function attachStickies({ state, reader }) {
 
   function attach(next) {
     ro?.disconnect();
+    // Attaching again (the PDF reader moving them onto its pages) replaces
+    // the layer, never adds a second one.
+    layer?.remove();
     els.clear();
     ctx = next;
     layer = document.createElement('div');
     layer.className = 'sticky-layer';
-    ctx.sheet.appendChild(layer);
+    host().appendChild(layer);
     render();
     ro = new ResizeObserver(() => { for (const s of state.stickiesOf(ctx.path)) { const el = els.get(s.id); if (el) place(s, el); } });
-    ro.observe(ctx.sheet);
+    ro.observe(host());
   }
 
   state.onChange((ev) => {
@@ -178,6 +202,17 @@ export function attachStickies({ state, reader }) {
      *  looking, near the right edge. text: what it starts with. */
     add(path, { text = '', at = null } = {}) {
       if (!ctx || ctx.path !== path || !layer?.isConnected) return;
+      if (ctx.pdf) {
+        const w = 240;
+        const spot = at ? ctx.pdf.fromClient(at.clientX + 8, at.clientY - 12) : ctx.pdf.visibleSpot(w);
+        const s = state.addSticky(path, {
+          line: -1, dx: 0, dy: 0, ...spot, w, h: text ? Math.min(260, 90 + Math.ceil(text.length / 30) * 19) : 170,
+          text: text ? `"${text.slice(0, 600)}"\n\n` : '',
+        });
+        render();
+        els.get(s.id)?.querySelector('textarea')?.focus();
+        return;
+      }
       const wrap = reader.wrap;
       const box = ctx.sheet.getBoundingClientRect();
       const sheetTop = box.top - wrap.getBoundingClientRect().top;

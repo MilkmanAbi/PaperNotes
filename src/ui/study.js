@@ -132,6 +132,10 @@ export function initStudy({ state, store, tree, reader, router, toasts, prefs, o
       current = { path: ctx.path, kind: ctx.kind, nodeId: ctx.nodeId };
       ctx.sheet.classList.toggle('is-done', state.isDone(ctx.path));
       if (ctx.kind === 'note' && ctx.article) marks.attach(ctx);
+      // A viewer that draws the file later (the PDF reader) moves them onto
+      // its pages, and can add one where you click.
+      ctx.restick = () => { if (current?.path === ctx.path) stickies.attach(ctx); };
+      ctx.addSticky = (opts) => stickies.add(ctx.path, opts);
       stickies.attach(ctx);
     },
   });

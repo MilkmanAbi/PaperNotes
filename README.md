@@ -59,6 +59,7 @@ You can always check what you're running: every release is built in the open by 
 - Search across names and the text inside your notes, PDFs and slides. `Ctrl K` jumps to anything or runs any command.
 - Notes render properly: LaTeX maths (KaTeX) and chemistry (`\ce{H2O}`), code with highlighting, code blocks you can run, and Obsidian-style Markdown: callouts (foldable, with icons), `[[links]]` to notes, sections and blocks, `![[embeds]]` of other notes, pictures and PDFs, `#tags`, `%% comments %%`, coloured highlights and task lists you can tick while reading.
 - Hover a link to preview the note behind it, and see which notes link to the one you're reading.
+- A PDF reader that edits: highlight, draw, add text, pictures and your signature, and stick sticky notes on the pages. The marks are saved into the PDF itself, so every other PDF app sees them, and the original is kept in case you want it back.
 - Diagrams without a diagram language: ` ```tree ` turns an indented list into a tree and ` ```flow ` turns one step per line into a flowchart. Mermaid for everything else.
 - A real editor (CodeMirror) for when you write your own notes, with a Notion-style `/` menu for blocks, `[[` suggestions for links, line numbers and search.
 - VS Code for the web in a tab, with Claude beside it, for writing code fast (and saving snippets as notes). Any tab can also open in a window of its own.
@@ -179,7 +180,7 @@ Made by Abinaash ([MilkmanAbi](https://github.com/MilkmanAbi)), built on PaperDe
 
 The mascot is **LilyKnight**, a small knight who guards your notebook and is slightly worried about your exam timetable. He shows up on the home screen to keep you company (๑•̀ㅂ•́)و✧
 
-PaperNotes stands on a lot of open-source work, including WebView2, CodeMirror, KaTeX, markdown-it, highlight.js, Mermaid, xterm.js, music-metadata and the Model Context Protocol SDK, and ships 49 open fonts (SIL Open Font License) through Fontsource. The full list and their licenses are in the app under Settings, then Licenses.
+PaperNotes stands on a lot of open-source work, including WebView2, CodeMirror, PDF.js, KaTeX, markdown-it, highlight.js, Mermaid, xterm.js, music-metadata and the Model Context Protocol SDK, and ships 49 open fonts (SIL Open Font License) through Fontsource. The full list and their licenses are in the app under Settings, then Licenses.
 
 ## License
 

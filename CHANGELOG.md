@@ -2,6 +2,15 @@
 
 PaperNotes follows [semantic versioning](https://semver.org). Each `## x.y.z` section below becomes the notes of that GitHub release, and the app shows them in its update panel.
 
+## 2.5.0
+
+Mark up your PDFs right inside PaperNotes (ง •̀_•́)ง
+
+- **A PDF reader that edits**: PDFs now open in PaperNotes' own reader, filling the tab. Highlight text, draw with a pen (any colour and size), add text, pictures and your signature (sign once with the mouse or a pen, reuse it after). Undo and redo, zoom, find, and it remembers the page you were on.
+- **Your marks go into the PDF itself**, as ordinary PDF annotations, so they show up in Edge, Acrobat and on your phone too. Edits save themselves a moment after you stop.
+- **Nothing is lost**: the first time a PDF is changed, PaperNotes keeps the file as it was (in `.papernotes/originals`), and More, then "Restore the original PDF" puts it back.
+- **Sticky notes on PDFs** are pinned to a spot on a page and stay there at any zoom. Pick the sticky tool and click where it goes. Claude can read them like the ones on your notes.
+
 ## 2.4.0
 
 Notes that write like Obsidian, a slash menu like Notion, diagrams in seconds, and a lot of fonts (｀・ω・´)ゞ Thanks to the friends who asked for these.

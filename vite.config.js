@@ -133,9 +133,28 @@ function notesContent() {
   };
 }
 
+/** pdf.js fetches these while it reads a PDF (the fonts a PDF leaves out,
+ *  maps for Chinese, Japanese and Korean text, image decoders and colour
+ *  profiles), so they ship beside the app in pdfjs/ (desktop/pdfview.js). */
+function pdfjsAssets() {
+  let outDir = 'dist';
+  return {
+    name: 'pdfjs-assets',
+    apply: 'build',
+    configResolved(c) { outDir = c.build.outDir; },
+    closeBundle() {
+      const from = path.join(ROOT, 'node_modules', 'pdfjs-dist');
+      for (const dir of ['cmaps', 'standard_fonts', 'wasm', 'iccs']) {
+        const src = path.join(from, dir);
+        if (fs.existsSync(src)) fs.cpSync(src, path.resolve(ROOT, outDir, 'pdfjs', dir), { recursive: true });
+      }
+    },
+  };
+}
+
 export default defineConfig({
   base: BASE,
-  plugins: [notesContent()],
+  plugins: [notesContent(), pdfjsAssets()],
   build: {
     outDir: 'dist',
     assetsDir: 'assets',

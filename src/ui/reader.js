@@ -54,6 +54,7 @@ export class Reader {
   _clear() {
     this.inner.replaceChildren();
     this.inner.dataset.wide = 'false';
+    this.inner.dataset.fill = 'false';
     this._setStyles('');
     this.headings = [];
   }
@@ -299,11 +300,14 @@ export class Reader {
 
     this._clear();
     this.currentPath = path;
-    this.inner.dataset.wide = String(['pdf', 'page', 'image', 'video', 'table', 'notebook', 'code'].includes(kind));
+    // A PDF fills the tab, the way Edge opens one: a slim bar, then the viewer.
+    const fill = kind === 'pdf';
+    this.inner.dataset.fill = String(fill);
+    this.inner.dataset.wide = String(!fill && ['page', 'image', 'video', 'table', 'notebook', 'code'].includes(kind));
 
     const sheet = document.createElement('div');
     sheet.className = 'reader__sheet reader__sheet--file';
-    if (nodeId > 0) sheet.appendChild(this._breadcrumb(nodeId));
+    if (nodeId > 0 && !fill) sheet.appendChild(this._breadcrumb(nodeId));
 
     const head = document.createElement('header');
     head.className = 'file__head';
@@ -331,7 +335,7 @@ export class Reader {
     const view = document.createElement('div');
     view.className = 'file__view';
     sheet.appendChild(view);
-    if (nodeId > 0) {
+    if (nodeId > 0 && !fill) {
       const nav = this._prevNext(nodeId);
       if (nav) sheet.appendChild(nav);
     }
@@ -342,7 +346,7 @@ export class Reader {
     this._after(ctx);
 
     try {
-      await this._fillViewer(view, { kind, name, url, size, path, force, token });
+      await this._fillViewer(view, { kind, name, url, size, path, force, token, ctx, nodeId });
     } catch (err) {
       if (token !== this._token) return;
       view.replaceChildren(this._fileNote(
@@ -350,12 +354,28 @@ export class Reader {
     }
   }
 
-  async _fillViewer(view, { kind, name, url, size, path, force, token }) {
+  /** An extension's own viewer for this kind of file (the desktop app's PDF
+   *  reader); true when it took the file. */
+  async _ownViewer(view, { kind, name, url, path, token, ctx, nodeId }) {
+    for (const e of this.extensions) {
+      if (!e.view) continue;
+      const v = {
+        view, kind, name, url, path, ctx,
+        current: () => token === this._token,
+        reopen: () => this.openFile(path, { force: true, nodeId }),
+      };
+      if (await e.view(v)) return true;
+    }
+    return false;
+  }
+
+  async _fillViewer(view, { kind, name, url, size, path, force, token, ctx, nodeId }) {
     const frame = (cls, extra = '') =>
       `<iframe class="file__frame ${cls}" src="${escape(url)}" title="${escape(name)}" ${extra}></iframe>`;
 
     switch (kind) {
       case 'pdf':
+        if (await this._ownViewer(view, { kind, name, url, path, token, ctx, nodeId })) return;
         view.innerHTML = frame('file__frame--pdf');
         if (matchMedia('(pointer: coarse)').matches) {
           view.prepend(this._fileNote('Phone browsers often show only the first page here. Use Open for the full PDF.'));

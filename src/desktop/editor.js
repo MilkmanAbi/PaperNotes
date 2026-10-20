@@ -15,7 +15,7 @@ import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { markdown } from '@codemirror/lang-markdown';
 import { syntaxHighlighting, HighlightStyle, bracketMatching } from '@codemirror/language';
 import { tags as t } from '@lezer/highlight';
-import { call } from './bridge.js';
+import { call, setUnsaved } from './bridge.js';
 import { renderNote, rewriteLinks } from '../core/markdown.js';
 import { enhance } from '../ui/enhance.js';
 import { assetUrl, encodePath } from '../core/paths.js';
@@ -226,7 +226,7 @@ export class Editor {
     this.el.querySelector('[data-act="discard"]').hidden = !dirty;
     if (dirty !== this._reportedDirty) {
       this._reportedDirty = dirty;
-      call('dirty', dirty ? 1 : 0, this.path.split('/').pop()).catch(() => {});
+      setUnsaved('editor', dirty, this.path.split('/').pop());
     }
   }
 
@@ -324,7 +324,7 @@ export class Editor {
   _reset() {
     clearTimeout(this._previewTimer);
     if (document.documentElement.dataset.page === 'edit') document.documentElement.dataset.page = 'note';
-    if (this._reportedDirty) call('dirty', 0, '').catch(() => {});
+    if (this._reportedDirty) setUnsaved('editor', false);
     this._reportedDirty = false;
     this.view?.destroy();
     this.view = null;

@@ -283,6 +283,7 @@ static const wchar_t* Mime(const std::wstring& path) {
         {L".wav", L"audio/wav"}, {L".ogg", L"audio/ogg"}, {L".m4a", L"audio/mp4"},
         {L".flac", L"audio/flac"}, {L".opus", L"audio/ogg"}, {L".oga", L"audio/ogg"}, {L".aac", L"audio/aac"},
         {L".woff2", L"font/woff2"}, {L".woff", L"font/woff"}, {L".ttf", L"font/ttf"},
+        {L".wasm", L"application/wasm"},
         {L".xml", L"text/xml; charset=utf-8"},
     };
     for (auto& m : map) if (!_wcsicmp(ext, m.e)) return m.m;
@@ -464,6 +465,16 @@ static bool WriteUtf8(const std::wstring& full, const std::string& data, std::ws
         DeleteFileW(Long(tmp).c_str());
         return false;
     }
+    return true;
+}
+
+/** Where the untouched copy of a PDF in the study folder is kept, once
+ *  PaperNotes has changed it: .papernotes\originals\<same path>. */
+static bool PdfOriginal(const std::wstring& full, std::wstring& out) {
+    if (g_notesDir.empty() || full.size() <= g_notesDir.size() + 1 ||
+        _wcsnicmp(full.c_str(), g_notesDir.c_str(), g_notesDir.size()) || full[g_notesDir.size()] != L'\\')
+        return false;
+    out = g_notesDir + L"\\.papernotes\\originals\\" + full.substr(g_notesDir.size() + 1);
     return true;
 }
 
@@ -1480,7 +1491,7 @@ static void Command(const std::wstring& message) {
         if (!missing.empty() && Exists(missing)) missing.clear();
         done(L"{\"version\":" + Json(kVersion) + L",\"notesDir\":" + Json(g_notesDir) + L",\"suggested\":" + Json(suggested) +
              L",\"missing\":" + Json(missing) + L",\"docs\":" + Json(DocsDir()) + L",\"empty\":" + (LibraryEmpty() ? L"true" : L"false") + L",\"dev\":" + (g_dev ? L"true" : L"false") +
-             L",\"window\":" + std::to_wstring(win) + L",\"features\":[\"windows\",\"web\",\"dragOut\"]}");
+             L",\"window\":" + std::to_wstring(win) + L",\"features\":[\"windows\",\"web\",\"dragOut\",\"pdfEdit\"]}");
     } else if (cmd == L"scan") {
         std::wstring files, side;
         if (!g_notesDir.empty()) ScanInto(g_notesDir, files, false, false);
@@ -1779,6 +1790,49 @@ static void Command(const std::wstring& message) {
         std::wstring err;
         if (!WriteUtf8(full, bytes, err)) return fail(err);
         done();
+    } else if (cmd == L"writePdf") {
+        // A PDF edited in PaperNotes (highlights, ink, text, pictures), as
+        // base64. The first time a PDF is changed, the file as it was is kept
+        // in .papernotes\originals, so the edits can always be taken back.
+        std::wstring full, orig;
+        if (!notePath(0, full)) return;
+        if (_wcsicmp(PathFindExtensionW(full.c_str()), L".pdf")) return fail(L"Only PDFs are saved this way.");
+        if (!Exists(full)) return fail(L"That PDF is not there any more.");
+        std::string bytes = Base64Decode(arg(1));
+        if (bytes.size() < 8 || bytes.compare(0, 5, "%PDF-") || bytes.size() > 512u * 1024 * 1024)
+            return fail(L"That is not a PDF PaperNotes can save.");
+        if (!PdfOriginal(full, orig)) return fail(L"That PDF is outside the study folder.");
+        if (!Exists(orig)) {
+            MakeDirs(Parent(orig));
+            MarkOwn(orig);
+            if (!CopyFileW(Long(full).c_str(), Long(orig).c_str(), TRUE))
+                return fail(L"Could not keep a copy of the original first: " + ErrorText());
+        }
+        std::wstring err;
+        if (!WriteUtf8(full, bytes, err)) return fail(err);
+        done(L"true");
+    } else if (cmd == L"pdfOriginal") {
+        // Whether the PDF has a kept original (it has been changed in PaperNotes).
+        std::wstring full, orig;
+        if (!notePath(0, full)) return;
+        done(PdfOriginal(full, orig) && Exists(orig) ? L"true" : L"false");
+    } else if (cmd == L"restorePdf") {
+        // Back to the PDF as it was before PaperNotes first changed it.
+        std::wstring full, orig;
+        if (!notePath(0, full)) return;
+        if (!PdfOriginal(full, orig) || !Exists(orig)) return fail(L"There is no original of that PDF.");
+        std::wstring tmp = full + L".pn-tmp";
+        MarkOwn(full);
+        MarkOwn(tmp);
+        if (!CopyFileW(Long(orig).c_str(), Long(tmp).c_str(), FALSE) ||
+            !MoveFileExW(Long(tmp).c_str(), Long(full).c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+            std::wstring err = ErrorText();
+            DeleteFileW(Long(tmp).c_str());
+            return fail(err);
+        }
+        MarkOwn(orig);
+        DeleteFileW(Long(orig).c_str());
+        done(L"true");
     } else if (cmd == L"musicInfo") {
         done(L"{\"dir\":" + Json(MusicDir()) + L",\"acp\":" + std::to_wstring(GetACP()) + L"}");
     } else if (cmd == L"musicScan") {
@@ -2083,6 +2137,12 @@ static void SetupAppView(ComPtr<ICoreWebView2> view, HWND owner) {
     s->put_AreDefaultContextMenusEnabled(TRUE);
     ComPtr<ICoreWebView2Settings3> s3;
     if (SUCCEEDED(s.As(&s3))) s3->put_AreBrowserAcceleratorKeysEnabled(g_dev);
+    // The PDF viewer's Save buttons would start a download, which this app
+    // never allows; the PDF is a file in the study folder already.
+    ComPtr<ICoreWebView2Settings7> s7;
+    if (SUCCEEDED(s.As(&s7)))
+        s7->put_HiddenPdfToolbarItems(static_cast<COREWEBVIEW2_PDF_TOOLBAR_ITEMS>(
+            COREWEBVIEW2_PDF_TOOLBAR_ITEMS_SAVE | COREWEBVIEW2_PDF_TOOLBAR_ITEMS_SAVE_AS));
     ComPtr<ICoreWebView2Settings4> s4;
     if (SUCCEEDED(s.As(&s4))) { s4->put_IsGeneralAutofillEnabled(FALSE); s4->put_IsPasswordAutosaveEnabled(FALSE); }
 

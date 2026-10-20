@@ -1,6 +1,6 @@
 {
   "name": "paper-notes",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "PaperNotes: a study app for Windows. Your notes, slides and past papers, with the tools to actually study them.",
   "scripts": {
     "dev": "vite",
@@ -90,7 +90,8 @@
     "markdown-it": "^15.0.3",
     "markdown-it-footnote": "^4.0.0",
     "mermaid": "^12.2.0",
-    "music-metadata": "^12.2.2"
+    "music-metadata": "^12.2.2",
+    "pdfjs-dist": "6.4.299"
   },
   "private": true,
   "type": "module",

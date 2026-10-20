@@ -828,3 +828,86 @@
 }
 .side__tree .panel__head[data-drop="root"] { background: var(--accent-muted); box-shadow: inset 0 0 0 1.5px var(--accent); }
 .side__tree .panel__head[data-drop="root"] .panel__title::after { color: var(--accent); }
+
+/* A PDF fills the tab, like opening one in Edge: one slim bar with its
+   name and buttons, then the viewer edge to edge (reader.js sets fill). */
+.reader[data-fill="true"] { max-width: none; height: 100%; padding: var(--space-2); display: flex; flex-direction: column; }
+.reader[data-fill="true"] .reader__sheet--file { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.reader[data-fill="true"] .file__head { flex-wrap: nowrap; gap: var(--space-2); padding: 6px 6px 6px var(--space-3); margin: 0; }
+.reader[data-fill="true"] .file__glyph .icon { width: 18px; height: 18px; }
+.reader[data-fill="true"] .file__titles { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; }
+.reader[data-fill="true"] .file__title { font-family: var(--font-ui); font-size: var(--type-body); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reader[data-fill="true"] .file__titles .caption { white-space: nowrap; }
+.reader[data-fill="true"] .file__actions { flex-wrap: nowrap; }
+.reader[data-fill="true"] .file__view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.reader[data-fill="true"] .file__frame--pdf { flex: 1; height: auto; min-height: 0; border: 0; border-radius: 0; }
+
+/* ── The PDF reader (desktop/pdfview.js) ─────────────────────────────
+   One bar of tools over the pages, like Edge's; the pages scroll in a
+   box of their own because pdf.js needs its container positioned.     */
+.pdfx { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.pdfx__wait { padding: var(--space-4); }
+.pdfx__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--space-2);
+  padding: 4px 6px;
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface-raised);
+}
+.pdfx__group { display: flex; align-items: center; gap: 2px; }
+.pdfx__gap { flex: 1 1 0; }
+.pdfx__opts { padding-left: var(--space-2); border-left: 1px solid var(--hairline); gap: var(--space-2); }
+.pdfx__swatches { display: flex; gap: 4px; }
+.pdfx__swatch {
+  width: 18px; height: 18px; padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--hairline-strong);
+  background: var(--sw);
+  cursor: pointer;
+}
+.pdfx__swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--surface-raised), 0 0 0 3.5px var(--accent); }
+.pdfx__slider { display: flex; align-items: center; gap: 6px; }
+.pdfx__slider input { width: 84px; accent-color: var(--accent); }
+.pdfx__page, .pdfx__search, .pdfx__zoom {
+  height: 26px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  color: var(--ink-primary);
+  font: inherit;
+  font-size: var(--type-body-sm);
+}
+.pdfx__page { width: 3.2em; text-align: center; }
+.pdfx__pages { margin: 0 4px; white-space: nowrap; }
+.pdfx__zoom { padding: 0 4px; }
+.pdfx__search { width: 150px; padding: 0 8px; }
+.pdfx__count { min-width: 4.5em; padding-left: 6px; white-space: nowrap; }
+.pdfx__state { min-width: 4.5em; text-align: right; white-space: nowrap; }
+.pdfx__body { position: relative; flex: 1; min-height: 0; }
+.pdfx__scroll { position: absolute; inset: 0; overflow: auto; background: var(--surface-sunken); outline: none; }
+.pdfx .pdfViewer { position: relative; padding: var(--space-3) 0; }
+.pdfx .pdfViewer .page { box-shadow: var(--elevation-2); border: 0; margin: 0 auto var(--space-3); }
+.pdfx[data-tool="sticky"] .pdfViewer .page { cursor: copy; }
+.pdfx .sticky-layer { z-index: 30; }
+
+/* The signature pad */
+.sigpad { width: min(560px, calc(100vw - 32px)); }
+.sigpad__pad {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1040 / 360;
+  margin: var(--space-3) 0;
+  border: 1px dashed var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  background: hsl(0 0% 100%);
+  touch-action: none;
+  cursor: crosshair;
+}
+.sigpad__row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.sigpad__keep { display: flex; align-items: center; gap: 6px; }
+.pdfx[data-editable="false"] .pdfx__tools { display: none; }
+.pdfx__hint { white-space: nowrap; }
+@media (max-width: 1100px) { .pdfx__hint { display: none; } }

@@ -43,6 +43,16 @@ export function call(cmd, ...args) {
   });
 }
 
+/** Unsaved work, as the window's close button sees it. Several things can
+ *  have some (the editor, a PDF being marked up), so each reports its own
+ *  and the host hears whether any of them does. */
+const unsaved = new Map();   // source -> what to call it in "Save … first?"
+export function setUnsaved(source, on, name = '') {
+  if (on) unsaved.set(source, name); else unsaved.delete(source);
+  const names = [...unsaved.values()].filter(Boolean);
+  call('dirty', unsaved.size ? 1 : 0, names.join(', ')).catch(() => {});
+}
+
 export function onEvent(fn) {
   listeners.add(fn);
   return () => listeners.delete(fn);
