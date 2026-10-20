@@ -157,6 +157,7 @@ export class TreeView {
     const el = document.createElement('div');
     el.className = 'tree__row';
     el.setAttribute('role', 'treeitem');
+    el.draggable = Boolean(this.draggableRows);   // the desktop app moves things by drag (desktop/tree-drop.js)
     el.innerHTML =
       `<span class="tree__twisty">${icon('chevron')}</span>` +
       '<span class="tree__glyph"></span>' +

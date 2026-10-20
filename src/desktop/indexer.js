@@ -62,6 +62,21 @@ async function fetchText(rel) {
   return res.text();
 }
 
+const FENCE_RE = /^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1[ \t]*$/gm;
+const WIKI_LINK_RE = /!?\[\[([^\]|#\n]+)(?:#[^\]|\n]*)?(?:\|[^\]\n]*)?\]\]/g;
+const MD_LINK_RE = /\]\((?!https?:|mailto:|#)([^)\s]+?\.(?:md|markdown|mdx))(?:#[^)\s]*)?\)/gi;
+
+/** The link targets a note names: [[wikilinks]] (and ![[embeds]]) by name,
+ *  Markdown links by relative path (prefixed "./"). Code is skipped, but not
+ *  ```tree and ```flow blocks: their [[links]] are boxes you can click. */
+function noteLinks(text) {
+  const body = text.replace(FENCE_RE, (block) => (/^[`~]{3,}\s*(tree|flow)\b/i.test(block) ? block : ''));
+  const out = new Set();
+  for (const m of body.matchAll(WIKI_LINK_RE)) out.add(m[1].trim());
+  for (const m of body.matchAll(MD_LINK_RE)) out.add(`./${m[1]}`);
+  return [...out];
+}
+
 /** Run `fn` over `items`, `limit` at a time. */
 async function pool(items, limit, fn) {
   let next = 0;
@@ -141,7 +156,16 @@ export async function indexNotesFolder({ onProgress } = {}) {
   });
 
   const signature = records.map((r) => `${r.dir ? 'd' : 'f'}${r.rel}`).join('\n');
+  // Every note's outgoing links, for "Linked mentions" (desktop/backlinks.js):
+  // the text is all here already, so this costs one regex pass, no reads.
+  const links = [];
+  for (const [key, text] of texts) {
+    if (!key.startsWith('n:')) continue;
+    const found = noteLinks(text);
+    if (found.length) links.push([key.slice(2), found]);
+  }
   return {
+    links,
     files: {
       'manifest.json': built.manifest,
       'fulltext.json': built.fulltext,

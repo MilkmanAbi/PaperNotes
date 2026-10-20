@@ -9,7 +9,12 @@ const view = window.chrome?.webview;
 
 export const isDesktop = Boolean(view);
 
-let seq = 0;
+/** 0 in the main window; 1, 2… in a window popped out of it (index.html?window=N).
+ *  A popped-out page numbers its requests from N × 10^9, which is how the
+ *  host knows which window to answer. */
+export const windowNumber = Number(new URLSearchParams(location.search).get('window')) || 0;
+
+let seq = windowNumber * 1e9;
 const pending = new Map();
 const listeners = new Set();
 

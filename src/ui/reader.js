@@ -262,7 +262,7 @@ export class Reader {
       exists: (p) => this._indexHas(p),
       resolveWiki: (n) => this.resolveWiki(n),
     });
-    enhance(article);
+    enhance(article, this.enhanceContext(path, raw));
 
     if (this.terms.length) highlightTerms(article, this.terms);
 
@@ -430,8 +430,24 @@ export class Reader {
     }
     view.replaceChildren(article);
     rewriteLinks(article, path, { exists: (p) => this._indexHas(p), resolveWiki: (n) => this.resolveWiki(n) });
-    enhance(article);
+    enhance(article, this.enhanceContext(path, text));
     this._emitHeadings();
+  }
+
+  /** What enhance() needs to reach beyond the note: other notes (embeds,
+   *  previews, links in diagrams) and search (#tags). */
+  enhanceContext(path, raw = null) {
+    return {
+      path,
+      raw,
+      exists: (p) => this._indexHas(p),
+      resolveWiki: (n) => this.resolveWiki(n),
+      contentUrl: (p) => this.store.contentUrl(p),
+      fetchText: (p) => this._fetchText(p, this.store.contentUrl(p), false),
+      open: (p, anchor = '') => { window.location.hash = toHash(p, anchor); },
+      search: (q) => this.onNavigate?.('search', q),
+      rewrite: (el, p = path) => rewriteLinks(el, p, { exists: (x) => this._indexHas(x), resolveWiki: (n) => this.resolveWiki(n) }),
+    };
   }
 
   async _fetchText(path, url, force) {

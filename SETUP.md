@@ -142,6 +142,41 @@ tags: [et1010, adc, chapter-4]
 
 ### Diagrams
 
+Two easy kinds that need no diagram language, plus Mermaid for anything else. Prefer the easy ones: they are quicker to write and harder to get wrong.
+
+**Trees** (mind maps, hierarchies, breakdowns): an indented outline, one box per line. Bullets are fine. ` ```tree ` grows to the right, ` ```tree down ` grows downwards. Clicking a box folds its branch.
+
+````markdown
+```tree
+Microcontroller
+  Inputs
+    Buttons
+    Sensors
+  Processing
+    ADC
+    Timers
+  Outputs
+    LEDs
+    Motors
+```
+````
+
+**Flowcharts**: one step per line. A line indented under another gets an arrow from it. `A -> B` draws an arrow on one line. `|yes|` before a step labels the arrow into it. Writing the same text twice means the same box, which is how branches meet again or loop back. ` ```flow right ` lays it out sideways.
+
+````markdown
+```flow
+(Start)
+  Read the sensor
+    Is it above the limit?
+      |yes| Turn the fan on -> (Done)
+      |no| Wait one second -> Read the sensor
+```
+````
+
+Shapes: a step ending in `?` is a decision diamond, `(Start)` is a round start or end, `((Circle))`, `[(Database)]` and `[/Input or output/]` are the others, and a step that is a `[[note link]]` opens that note when clicked. If something is wrong, the note shows the line number.
+
+Anything else (sequence diagrams, state machines, timing, Gantt charts): Mermaid.
+
 ````markdown
 ```mermaid
 flowchart LR
@@ -158,14 +193,17 @@ Fenced blocks with a language get highlighting: ` ```c `, ` ```python `, ` ```js
 
 ### Callout boxes
 
-A quote whose first line is `[!type]` (or `[!type|Your own title]`) becomes a coloured box:
+A quote whose first line is `[!type]` becomes a coloured box with an icon, the same syntax Obsidian uses. Text after the type is the box's title. A `-` after the type makes it start folded (click to open, good for answers to self-test questions), `+` makes it foldable but open. `[!type|Your own title]` also works.
 
 ```markdown
 > [!key]
 > The core idea of the section. If someone only reads the key boxes, they've read the module.
 
-> [!exam|Asked every year]
+> [!exam] Asked every year
 > What gets tested, and how.
+
+> [!question]- What is the resolution of a 10-bit ADC at 5 V?
+> 5 V / 1024, about 4.9 mV per step.
 ```
 
 | Type | Use it for |
@@ -179,18 +217,28 @@ A quote whose first line is `[!type]` (or `[!type|Your own title]`) becomes a co
 | `tip`, `note`, `warn`, `code` | the obvious |
 | `lol` | a brain break: a joke, a silly analogy |
 
+Obsidian's types work too: `info`, `todo`, `abstract` (`summary`, `tldr`), `success` (`done`), `question` (`faq`, `help`), `warning` (`caution`), `failure`, `danger` (`error`), `bug`, `example`, `quote` (`cite`).
+
 ### Emphasis and labels
 
-- `==highlighted text==`
+- `==highlighted text==`, or in another colour: `==g:green==` `==b:blue==` `==r:red==` `==p:purple==` `==o:orange==`
 - Coloured words: `{r:red}` `{o:orange}` `{g:green}` `{b:blue}` `{p:purple}`
+- `#tags` anywhere in the text (they need a letter: `#exam-prep`, not `#2024`); clicking one searches for it
+- `%% a comment %%` is hidden when reading; a line starting with `%%` hides everything up to the next `%%`
+- Tasks: `- [ ]` and `- [x]` (the student can tick them while reading), plus `- [/]` doing, `- [-]` cancelled, `- [>]` moved on, `- [?]` question, `- [!]` important, `- [*]` starred
+- Footnotes: `[^1]` with `[^1]: the note` below, or inline `^[like this]`
+- A file name on a code block: ` ```c title="blink.c" `
 - A kaomoji that should never be mangled by Markdown: `{k:(╯°□°)╯︵ ┻━┻}`
 - Where something came from: `[[OFF]]` official (slides, answers), `[[ME]]` the student's own working, `[[HY]]` high-yield, `[[NEW]]` new.
 
 ### Links and images
 
-- Link to another note by its file name, with or without the number: `[[03 ADC]]` or `[[ADC]]`; with a label `[[03 ADC|the ADC chapter]]`, to a section `[[03 ADC#Resolution]]`.
+- Link to another note by its file name, with or without the number: `[[03 ADC]]` or `[[ADC]]`; with a label `[[03 ADC|the ADC chapter]]`, to a section `[[03 ADC#Resolution]]`, to a section of the same note `[[#Resolution]]`.
+- Name a paragraph or list item by ending it with ` ^some-name`, then link to exactly that: `[[03 ADC#^some-name]]`.
 - Ordinary links work too: `[ADC](03%20ADC.md)`, `[datasheet](https://...)`.
 - Images, with an optional width: `![Block diagram](img/adc-block-diagram.png "60%")`. Use `"80%!"` for a big one.
+- Embed (show inside this note) another note, one section of it, or one named block: `![[03 ADC]]`, `![[03 ADC#Resolution]]`, `![[03 ADC#^some-name]]`. Files too: `![[block-diagram.png|400]]` (400 px wide), `![[lecture.mp4]]`, `![[slides.pdf#page=3]]`.
+- Hovering a link to another note shows a preview, and each note lists the notes that link to it at the bottom, so linking related notes is worth it.
 
 ### Flashcards
 
@@ -256,7 +304,7 @@ See also [[05 Timers]].
 
 - [ ] One folder per module inside `01 Study`, `02 Exams` and `03 School` (or whatever structure the student asked for), with the module code in each name.
 - [ ] Files numbered for order (`01 `, `02 `), Windows-safe names, `00 About this unit.md` for overviews.
-- [ ] Every note has a `#` title and `##` sections; maths in `$...$`; diagrams in ` ```mermaid `.
+- [ ] Every note has a `#` title and `##` sections; maths in `$...$`; diagrams in ` ```tree `, ` ```flow ` or ` ```mermaid `.
 - [ ] Callouts use only the types listed above.
 - [ ] Images are in `img/` next to the note and linked relatively.
 - [ ] `[[wikilinks]]` point at notes that exist (by file name, without `.md`).

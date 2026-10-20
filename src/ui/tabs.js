@@ -17,11 +17,12 @@ let seq = 0;
 const newId = () => `t${Date.now().toString(36)}${(seq++).toString(36)}`;
 
 export class Tabs {
-  constructor({ mount, titleOf, capture, restore, onChange }) {
+  constructor({ mount, titleOf, capture, restore, onChange, onMenu }) {
     this.titleOf = titleOf;
     this.capture = capture;
     this.restore = restore;
     this.onChange = onChange || (() => {});
+    this.onMenu = onMenu || null;   // right-click a tab (the app supplies the menu)
     this.tabs = [];
     this.activeId = null;
     this._navigating = false;   // a back/forward/switch is moving the route
@@ -49,6 +50,14 @@ export class Tabs {
     this.strip.addEventListener('auxclick', (e) => {
       const tabEl = e.target.closest('.tab');
       if (tabEl && e.button === 1) { e.preventDefault(); this.close(tabEl.dataset.id); }
+    });
+    this.strip.addEventListener('contextmenu', (e) => {
+      const tabEl = e.target.closest('.tab');
+      const tab = tabEl && this.tabs.find((t) => t.id === tabEl.dataset.id);
+      if (!tab || !this.onMenu) return;
+      e.preventDefault();
+      e.stopPropagation();
+      this.onMenu(tab, { x: e.clientX, y: e.clientY });
     });
     this.strip.addEventListener('dblclick', (e) => {
       if (e.target === this.strip) this.open('', { activate: true });

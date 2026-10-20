@@ -6,7 +6,11 @@
  *  to dark — so the first launch never asks the user to configure something
  *  they already set at the system level. */
 
+import { applyFonts } from './fonts.js';
+import { applyCustomTheme } from './custom-theme.js';
+
 const KEY = 'paper-notes/prefs/v1';
+const POPOUT = /[?&]window=[1-9]/.test(globalThis.location?.search || '');
 
 const DEFAULTS = {
   theme: 'system',            // system | light | dark
@@ -21,7 +25,12 @@ const DEFAULTS = {
   // line length for people who prefer a measure.
   readingWidth: 'fill',       // narrow | comfortable | wide | fill
   readerScale: 100,           // % size of note text
-  readerFont: 'serif',        // serif | sans
+  readerFont: 'serif',        // serif | sans: the old switch; fontText supersedes it
+  fontText: null,             // a font id from src/core/fonts.js (null: follow readerFont)
+  fontHeading: 'same',        // 'same' as the text, or a font id
+  fontCode: 'default',        // 'default' (the app's monospace), or a font id
+  lineHeight: 'normal',       // compact | normal | relaxed
+  customTheme: null,          // { base, accent, highlight } when palette is 'custom'
   focus: false,               // both side panels hidden at once
   toolkitOpen: true,
   toolkitHeight: 300,
@@ -29,6 +38,7 @@ const DEFAULTS = {
   restoreTabs: true,
   editorLineNumbers: true,
   spellcheck: true,
+  linkPreview: true,          // hover a link to another note: a preview card
 };
 
 const EXPANDED_CAP = 600;
@@ -76,6 +86,9 @@ export class Prefs {
   }
 
   save() {
+    // A window popped out of the main one shares its settings but never
+    // writes them: the main window owns them (see main.js, POPOUT).
+    if (POPOUT) return;
     try { localStorage.setItem(KEY, JSON.stringify(this.state)); }
     catch { /* a full or disabled store is not worth interrupting anyone over */ }
   }
@@ -92,8 +105,9 @@ export class Prefs {
     else root.setAttribute('data-theme', this.state.theme);
     root.setAttribute('data-density', this.state.density);
     root.setAttribute('data-palette', this.state.palette || 'paper');
+    applyCustomTheme(this.state, root);   // a custom theme sets its base palette itself
     root.setAttribute('data-reading', this.state.readingWidth);
-    root.setAttribute('data-reader-font', this.state.readerFont);
+    applyFonts(this.state, root);
     root.style.setProperty('--reader-scale', String((this.state.readerScale || 100) / 100));
     root.style.setProperty('--tree-w', `${this.state.treeWidth}px`);
     root.style.setProperty('--toolkit-h', `${this.state.toolkitHeight}px`);

@@ -55,10 +55,13 @@ You can always check what you're running: every release is built in the open by 
 ## What it does
 
 **Reading and finding things**
-- A file tree that copes with huge, deeply nested folders, plus tabs (each with its own back and forward), side-by-side panes and an outline.
+- A file tree that copes with huge, deeply nested folders, plus tabs (each with its own back and forward), side-by-side panes and an outline. Drag files in from Explorer, and drag notes between folders to move them.
 - Search across names and the text inside your notes, PDFs and slides. `Ctrl K` jumps to anything or runs any command.
-- Notes render properly: LaTeX maths (KaTeX) and chemistry (`\ce{H2O}`), Mermaid diagrams, code with highlighting, code blocks you can run, `[[links between notes]]`, callouts.
-- A real editor (CodeMirror) with line numbers and search, for when you write your own notes.
+- Notes render properly: LaTeX maths (KaTeX) and chemistry (`\ce{H2O}`), code with highlighting, code blocks you can run, and Obsidian-style Markdown: callouts (foldable, with icons), `[[links]]` to notes, sections and blocks, `![[embeds]]` of other notes, pictures and PDFs, `#tags`, `%% comments %%`, coloured highlights and task lists you can tick while reading.
+- Hover a link to preview the note behind it, and see which notes link to the one you're reading.
+- Diagrams without a diagram language: ` ```tree ` turns an indented list into a tree and ` ```flow ` turns one step per line into a flowchart. Mermaid for everything else.
+- A real editor (CodeMirror) for when you write your own notes, with a Notion-style `/` menu for blocks, `[[` suggestions for links, line numbers and search.
+- VS Code for the web in a tab, with Claude beside it, for writing code fast (and saving snippets as notes). Any tab can also open in a window of its own.
 
 **Studying**
 - Mark notes as done and watch folders fill up. Colour tags. Reminders that pop up as Windows notifications.
@@ -74,7 +77,8 @@ You can always check what you're running: every release is built in the open by 
 - Your semester week (Wk 1, Wk 2 and so on) and today's classes from a `timetable.csv`.
 
 **Comfort**
-- 15 themes, each in light and dark: Paper, Sakura, Ocean, Deep Ocean, Darker, Gruvbox, Solarized, Nord, Dracula, Catppuccin, Tokyo Night, Rose Pine, Everforest, Kanagawa and One.
+- 15 themes, each in light and dark: Paper, Sakura, Ocean, Deep Ocean, Darker, Gruvbox, Solarized, Nord, Dracula, Catppuccin, Tokyo Night, Rose Pine, Everforest, Kanagawa and One. Or a Custom one: any of those with your own accent and highlighter colour.
+- 83 fonts for your notes, from the one Notion and Obsidian use to Word's, reading serifs, easier-to-read fonts like Atkinson Hyperlegible and OpenDyslexic, and handwriting. Separate fonts for headings and code if you like.
 - A music player for your Music folder, with proper titles, artists and cover art in any language, and Windows' media keys.
 - Relax mode: the tab becomes a calm animation (bring your own video if you like). Put some music on and go lie down for a bit (￣ー￣)
 - T^T. It's a button. Press it when studying has gone wrong.
@@ -175,7 +179,7 @@ Made by Abinaash ([MilkmanAbi](https://github.com/MilkmanAbi)), built on PaperDe
 
 The mascot is **LilyKnight**, a small knight who guards your notebook and is slightly worried about your exam timetable. He shows up on the home screen to keep you company (๑•̀ㅂ•́)و✧
 
-PaperNotes stands on a lot of open-source work, including WebView2, CodeMirror, KaTeX, markdown-it, highlight.js, Mermaid, xterm.js, music-metadata and the Model Context Protocol SDK. The full list and their licenses are in the app under Settings, then Licenses.
+PaperNotes stands on a lot of open-source work, including WebView2, CodeMirror, KaTeX, markdown-it, highlight.js, Mermaid, xterm.js, music-metadata and the Model Context Protocol SDK, and ships 49 open fonts (SIL Open Font License) through Fontsource. The full list and their licenses are in the app under Settings, then Licenses.
 
 ## License
 

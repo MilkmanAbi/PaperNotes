@@ -445,7 +445,7 @@ server.registerTool('papernotes_flashcards', {
 
 server.registerTool('papernotes_write_note', {
   title: 'Write a note',
-  description: 'Create a Markdown note in the library (callouts like > [!key], ==highlight==, LaTeX, ```mermaid diagrams and ```html run blocks all render in PaperNotes). It never overwrites an existing note unless that note is inside the student\'s "My notes" folder and overwrite is true. Default location: My notes/.',
+  description: 'Create a Markdown note in the library. PaperNotes renders Obsidian-style Markdown: callouts (> [!key], > [!tip] Title, > [!faq]- folded), ==highlight== and ==g:coloured==, [[wikilinks]], [[Note#Heading]], ![[Note#Section]] embeds, #tags, - [ ] tasks, LaTeX, ```html run blocks, ```mermaid, and two easy diagrams: ```tree (an indented outline drawn as a tree; ```tree down grows downwards) and ```flow (one step per line, indent = arrow from the line above, A -> B on one line, |yes| labels the arrow into a step, same text = same box so branches can meet or loop, a step ending in ? is a decision, (Start) is a start/end; ```flow right lays it out sideways). Prefer ```tree and ```flow over Mermaid for simple diagrams. It never overwrites an existing note unless that note is inside the student\'s "My notes" folder and overwrite is true. Default location: My notes/.',
   inputSchema: { path: z.string().describe('e.g. "My notes/Ch4 ADC summary.md"'), content: z.string().min(1), overwrite: z.boolean().optional() },
 }, async ({ path: rel, content, overwrite }) => {
   const root = studyFolder();

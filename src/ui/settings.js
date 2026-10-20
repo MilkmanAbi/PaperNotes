@@ -10,7 +10,9 @@ import { renderNote } from '../core/markdown.js';
 import { isDesktop, call } from '../desktop/bridge.js';
 import { escapeHtml } from './study.js';
 import gplText from '../assets/gpl-3.0.md?raw';
+import fontLicenses from '../assets/font-licenses.md?raw';
 import { PALETTES } from '../core/palettes.js';
+import { customCard, customPanel, fontPicker } from './appearance.js';
 
 const THIRD_PARTY = [
   ['markdown-it', 'MIT', 'Vitaly Puzrin, Alex Kocharin', 'https://github.com/markdown-it/markdown-it'],
@@ -18,6 +20,8 @@ const THIRD_PARTY = [
   ['KaTeX', 'MIT', 'Khan Academy and contributors', 'https://github.com/KaTeX/KaTeX'],
   ['highlight.js', 'BSD-3-Clause', 'Ivan Sagalaev and contributors', 'https://github.com/highlightjs/highlight.js'],
   ['CodeMirror 6', 'MIT', 'Marijn Haverbeke and contributors', 'https://github.com/codemirror/dev'],
+  ['Mermaid', 'MIT', 'Knut Sveidqvist and contributors', 'https://github.com/mermaid-js/mermaid'],
+  ['Fonts (49 open families, listed below)', 'OFL-1.1', 'Their designers, packaged by Fontsource', 'https://fontsource.org'],
   ['Model Context Protocol SDK', 'MIT', 'Anthropic, PBC', 'https://github.com/modelcontextprotocol/typescript-sdk'],
   ['Microsoft Edge WebView2 SDK', 'BSD-3-Clause', 'Microsoft Corporation', 'https://www.nuget.org/packages/Microsoft.Web.WebView2'],
   ['Lucide icons (shapes)', 'ISC', 'Lucide contributors', 'https://lucide.dev'],
@@ -49,6 +53,9 @@ const SHORTCUTS = [
   ['Ctrl B / Ctrl Alt B', 'Notes panel / outline'],
   ['Ctrl E', 'Edit the note'],
   ['Ctrl S', 'Save (in the editor)'],
+  ['/', 'In the editor, at the start of a line: insert a block (callout, table, tree, flowchart…)'],
+  ['[ [', 'In the editor: link a note, with suggestions (![[ embeds it)'],
+  ['Ctrl B / Ctrl I', 'In the editor: bold / italic (Ctrl Shift H highlights)'],
   ['Ctrl N', 'New note'],
   ['Ctrl D', 'Mark as done'],
   ['Ctrl R', 'New reminder'],
@@ -151,11 +158,13 @@ function button(label, onClick, { primary = false, iconName = null } = {}) {
   return b;
 }
 
-/** A card per theme, each showing its light half and its dark half. */
-function themePicker(prefs) {
+/** A card per theme, each showing its light half and its dark half, then
+ *  the Custom one (its settings appear underneath while it is on). */
+function themePicker(prefs, rerender) {
   const wrap = document.createElement('div');
   wrap.className = 'themes';
   const current = prefs.get('palette') || 'paper';
+  wrap.appendChild(customCard(prefs, rerender));
   for (const p of PALETTES) {
     const b = document.createElement('button');
     b.type = 'button';
@@ -167,11 +176,15 @@ function themePicker(prefs) {
     b.innerHTML = `<span class="theme-card__preview">${half(p.light)}${half(p.dark)}</span>
       <span class="theme-card__name">${escapeHtml(p.name)}</span><span class="theme-card__note">${escapeHtml(p.note)}</span>`;
     b.onclick = () => {
+      const fromCustom = prefs.get('palette') === 'custom';
       prefs.set('palette', p.id);
       for (const x of wrap.children) x.setAttribute('aria-pressed', String(x === b));
+      if (fromCustom) rerender?.();   // the custom settings go away
     };
     wrap.appendChild(b);
   }
+  // The custom card first in the source keeps it easy to find; it shows last.
+  wrap.appendChild(wrap.firstElementChild);
   return wrap;
 }
 
@@ -197,10 +210,11 @@ const RENDER = {
     return s;
   },
 
-  appearance({ prefs }) {
+  appearance({ prefs, rerender }) {
     const s = section('Appearance');
     s.append(
-      themePicker(prefs),
+      themePicker(prefs, rerender),
+      ...(prefs.get('palette') === 'custom' ? [customPanel(prefs, row)] : []),
       row('Light or dark', 'Every theme has both. Follow Windows, or pick one.', segmented([
         { value: 'light', label: 'Light', icon: 'sun' },
         { value: 'system', label: 'System', icon: 'system' },
@@ -229,9 +243,13 @@ const RENDER = {
         { value: 'comfortable', label: 'Comfortable' }, { value: 'wide', label: 'Wide' }, { value: 'fill', label: 'Fill' },
       ], prefs.get('readingWidth'), (v) => prefs.set('readingWidth', v))),
       row('Text size', 'Notes only; the app around them stays the same.', scale),
-      row('Typeface', 'Serif is the paper look; sans reads cleaner on small screens.', segmented([
-        { value: 'serif', label: 'Serif' }, { value: 'sans', label: 'Sans' },
-      ], prefs.get('readerFont'), (v) => prefs.set('readerFont', v))),
+      row('Text font', 'Notes only. Paper Serif is the original look; Default is what Notion and Obsidian use. Office fonts work when this PC has them.', fontPicker(prefs, 'text')),
+      row('Heading font', 'Headings can have a font of their own, or follow the text.', fontPicker(prefs, 'heading')),
+      row('Code font', 'Code blocks in notes, and the editor.', fontPicker(prefs, 'code')),
+      row('Line spacing', 'Space between the lines of a note.', segmented([
+        { value: 'compact', label: 'Compact' }, { value: 'normal', label: 'Normal' }, { value: 'relaxed', label: 'Relaxed' },
+      ], prefs.get('lineHeight') || 'normal', (v) => prefs.set('lineHeight', v))),
+      row('Preview links on hover', 'Rest the pointer on a link to another note to see what is there, without leaving this one.', toggle(prefs.get('linkPreview') !== false, (v) => prefs.set('linkPreview', v))),
       row('Editor line numbers', 'Shown beside the Markdown while editing.', toggle(prefs.get('editorLineNumbers'), (v) => prefs.set('editorLineNumbers', v))),
       row('Spell check', 'Underline misspellings while editing.', toggle(prefs.get('spellcheck'), (v) => prefs.set('spellcheck', v))),
     );
@@ -408,7 +426,14 @@ const RENDER = {
     article.innerHTML = renderNote(gplText, 'LICENSE.md').html;
     gpl.appendChild(article);
     gpl.open = true;
-    s.append(intro, list, gpl);
+    const fonts = document.createElement('details');
+    fonts.className = 'licenses__gpl';
+    fonts.innerHTML = '<summary>The fonts and the SIL Open Font License 1.1</summary>';
+    const fontText = document.createElement('article');
+    fontText.className = 'note-content';
+    fontText.innerHTML = renderNote(fontLicenses, 'FONTS.md').html;
+    fonts.appendChild(fontText);
+    s.append(intro, list, fonts, gpl);
     return s;
   },
 };

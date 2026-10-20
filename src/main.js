@@ -2,7 +2,9 @@ import './styles/tokens.css';
 import './styles/base.css';
 import './styles/app.css';
 import 'katex/dist/katex.min.css';
+import './styles/fonts.css';
 import './styles/content.css';
+import './styles/blocks.css';
 import './styles/study.css';
 import './styles/workspace.css';
 import './styles/extras.css';
@@ -20,9 +22,15 @@ import { Palette } from './ui/palette.js';
 import { Tabs } from './ui/tabs.js';
 import { StatusBar, Toasts } from './ui/feedback.js';
 import { icon } from './ui/icons.js';
-import { humanCount, decodeHashPath } from './core/paths.js';
+import { humanCount, decodeHashPath, toHash } from './core/paths.js';
 import { useLocalDb } from './core/db.js';
-import { isDesktop, call } from './desktop/bridge.js';
+import { isDesktop, call, windowNumber, nativeMenu } from './desktop/bridge.js';
+
+// A window popped out of the main one ("Open in new window"): a second view
+// of the same notes. What PaperNotes remembers (stickies, marks, study time,
+// settings, open tabs) is kept by the main window alone, so two windows can
+// never write over each other; this one only reads it.
+const POPOUT = windowNumber > 0;
 import { initStudy } from './ui/study.js';
 import { Toolkit } from './ui/toolkit.js';
 import { SplitView } from './ui/split.js';
@@ -33,19 +41,21 @@ import { attachContextMenu } from './ui/contextmenu.js';
 import { Avatar, mountProfileChip, showProfilePage } from './ui/me.js';
 import { mountQuotes } from './ui/quotes.js';
 import { PALETTES } from './core/palettes.js';
+import { setLinkPreviews } from './ui/preview.js';
 
 // Whether this browser profile already had settings (else the library's copy is used).
 const hadPrefs = (() => { try { return Boolean(localStorage.getItem('paper-notes/prefs/v1')); } catch { return false; } })();
 const prefs = new Prefs();
 prefs.apply();   // before first paint: the OS preference is already known
+if (POPOUT) document.documentElement.dataset.popout = 'true';
 
 const app = document.getElementById('app');
 const toasts = new Toasts();
 
 /** App pages that are not files. They start with ':' so they can never
  *  collide with a real path (Windows forbids ':' in names). */
-export const PAGES = { settings: ':settings', timetable: ':timetable', review: ':review', profile: ':profile', music: ':music', relax: ':relax' };
-const PAGE_TITLES = { ':settings': 'Settings', ':timetable': 'Timetable', ':review': 'Flashcards', ':profile': 'Profile', ':music': 'Music', ':relax': 'Relax' };
+export const PAGES = { settings: ':settings', timetable: ':timetable', review: ':review', profile: ':profile', music: ':music', relax: ':relax', code: ':code' };
+const PAGE_TITLES = { ':settings': 'Settings', ':timetable': 'Timetable', ':review': 'Flashcards', ':profile': 'Profile', ':music': 'Music', ':relax': 'Relax', ':code': 'VS Code' };
 
 boot().catch((err) => fatal(err));
 
@@ -56,6 +66,8 @@ async function boot() {
   // No folder chosen yet: the first-run screen asks for one, and the app
   // starts properly once it has an answer.
   let hostInfo = null;
+  // What this PaperNotes.exe can do (an older one, from before 2.4, says nothing).
+  const hostCan = (f) => Array.isArray(hostInfo?.features) && hostInfo.features.includes(f);
   if (isDesktop) {
     hostInfo = await call('info');
     if (!hostInfo.notesDir) {
@@ -63,7 +75,7 @@ async function boot() {
       await runOnboarding(app, hostInfo);
       return;   // the host reloads the page once a folder is chosen
     }
-    await mirrorPrefs();
+    if (!POPOUT) await mirrorPrefs();
   }
 
   const shell = buildShell();
@@ -118,6 +130,7 @@ async function boot() {
   }
   setTotals();
   let desktop = null;
+  let webtab = null;   // the VS Code tab's module, once it has been opened
 
   // ── views ──────────────────────────────────────────────────────────
   const toc = new Toc({ mount: shell.tocBody, router });
@@ -300,6 +313,7 @@ async function boot() {
   async function show(route) {
     if (desktop && !(await desktop.beforeShow(route))) return;
     const { path, anchor } = route;
+    if (path !== PAGES.code) webtab?.hideWebTab();
     tabs.noteRoute(route);
     syncNav();
     document.documentElement.dataset.page = path === PAGES.settings ? 'settings' : path === PAGES.relax ? 'relax' : !path ? 'home'
@@ -333,6 +347,20 @@ async function boot() {
           profile = await loadProfile(store);
           syncTopbar();
         } : null });
+      tree.setSelected(-1);
+      status.remove('path');
+      return;
+    }
+    if (path === PAGES.code) {
+      if (!isDesktop || POPOUT) { router.go(''); return; }
+      webtab ||= await import('./desktop/webtab.js');
+      await webtab.showWebTab({
+        reader, toasts,
+        claude: () => desktop?.claude('', { task: 'code' }),
+        myNotes: () => desktop?.myNotesFolder() || '',
+        openNote: (p) => tabs.open(p, { activate: false }),
+        onClose: () => router.go(''),
+      });
       tree.setSelected(-1);
       status.remove('path');
       return;
@@ -440,6 +468,20 @@ async function boot() {
       if (!tab.anchor) reader.wrap.scrollTop = tab.readerScroll || 0;
     },
     onChange: () => { syncNav(); saveTabs(); },
+    // Right-click a tab (the app): open it in a window of its own, and the usual.
+    onMenu: isDesktop ? async (tab, point) => {
+      const open = await nativeMenu([
+        ...(hostCan('windows') && tab.path !== PAGES.code ? [{ id: 1, label: 'Open in new window' }, '-'] : []),
+        { id: 2, label: 'Duplicate tab' },
+        '-',
+        { id: 3, label: 'Close tab	Ctrl+W' },
+        { id: 4, label: 'Close other tabs', disabled: tabs.tabs.length < 2 },
+      ], point);
+      if (open === 1) call('openWindow', toHash(tab.path, tab.anchor)).catch((err) => toasts.show({ tone: 'error', text: err.message }));
+      if (open === 2) tabs.open(tab.path, { activate: true, after: tab.id });
+      if (open === 3) tabs.close(tab.id);
+      if (open === 4) for (const t of [...tabs.tabs]) if (t.id !== tab.id) tabs.close(t.id);
+    } : null,
   });
 
   // The reader renders asynchronously; restore waits for it to settle.
@@ -486,8 +528,10 @@ async function boot() {
   if (isDesktop) {
     const { Terminals } = await import('./desktop/terminal.js');
     terminals = new Terminals({ shell, prefs, toasts });
-    shell.termBtn.hidden = false;
+    shell.termBtn.hidden = POPOUT;
     shell.termBtn.onclick = () => terminals.toggle();
+    shell.codeBtn.hidden = POPOUT || !hostCan('web');
+    shell.codeBtn.onclick = () => openCode();
   }
   const split = new SplitView({ shell, store, prefs, router, terminals });
   if (terminals) terminals.onToSide = (s) => split.openTerminal(s);
@@ -497,7 +541,7 @@ async function boot() {
     reader, state, study, toasts,
     onAsk: isDesktop ? (path, opts) => desktop?.claude(path, opts) : null,
   });
-  startTimeTracking({ state, router });
+  if (!POPOUT) startTimeTracking({ state, router });
   const focusMount = document.createElement('div');
   focusMount.className = 'status-extra';
   shell.statusMount.appendChild(focusMount);
@@ -553,13 +597,14 @@ async function boot() {
     desktop = initDesktop({
       store, search, tree, reader, router, toasts, prefs, shell, show, setTotals, state, tabs, study, hostInfo, terminals, split, profile: ctxRef,
       signature: desktopIndex.signature,
+      links: desktopIndex.links,
       rerunSearch: () => { if (activeQuery) runSearch(activeQuery); },
     });
   }
   window.addEventListener('papernotes:profile', () => editMe());
 
   // Updates from GitHub releases, one click (desktop).
-  if (isDesktop) {
+  if (isDesktop && !POPOUT) {
     const { Updater } = await import('./desktop/updater.js');
     updater = new Updater({
       current: hostInfo.version, toasts, prefs, button: shell.updateBtn,
@@ -576,7 +621,7 @@ async function boot() {
   });
 
   // First tab: the saved session, or a fresh home view.
-  const restored = prefs.get('restoreTabs') && tabs.load(prefs.get('tabs'));
+  const restored = !POPOUT && prefs.get('restoreTabs') && tabs.load(prefs.get('tabs'));
   if (!restored) {
     const first = tabs.open(router.current.path || '', { activate: false });
     tabs.activeId = first.id;
@@ -587,6 +632,11 @@ async function boot() {
 
   // ── commands, shortcuts, chrome wiring ─────────────────────────────
   const openSettings = (section = '') => router.go(PAGES.settings, { anchor: section });
+  // VS Code for the web: back to its tab if one is open, or a new one.
+  const openCode = () => {
+    const open = tabs.tabs.find((t) => t.path === PAGES.code);
+    if (open) tabs.activate(open.id); else tabs.open(PAGES.code, { activate: true });
+  };
 
   const palette = new Palette({
     search,
@@ -622,8 +672,10 @@ async function boot() {
       { id: 'theme-light', label: 'Light or dark: light', run: () => prefs.set('theme', 'light') },
       { id: 'theme-dark', label: 'Light or dark: dark', run: () => prefs.set('theme', 'dark') },
       ...PALETTES.map((p) => ({ id: `palette-${p.id}`, label: `Theme: ${p.name}`, hint: prefs.get('palette') === p.id ? 'current' : '', run: () => prefs.set('palette', p.id) })),
+      { id: 'palette-custom', label: 'Theme: Custom', hint: prefs.get('palette') === 'custom' ? 'current' : 'your own colours', run: () => openSettings('appearance') },
       { id: 'profile', label: 'My profile', hint: '', run: () => router.go(PAGES.profile) },
       { id: 'relax', label: 'Relax mode', hint: '', run: () => router.go(PAGES.relax) },
+      ...(isDesktop && !POPOUT && hostCan('web') ? [{ id: 'code', label: 'VS Code for the web', hint: 'with Claude beside it', run: () => openCode() }] : []),
       { id: 'avatar', label: 'Change my profile picture', hint: '', run: () => avatar.change(toasts) },
       { id: 'pomo', label: 'Pomodoro: start, pause or resume', hint: '', run: () => pomodoro.toggle() },
       { id: 'pomo-skip', label: 'Pomodoro: skip to the next block', hint: '', run: () => pomodoro.next(false) },
@@ -683,7 +735,9 @@ async function boot() {
   shell.homeBtn.onclick = () => router.go('');
   applyPanels();
 
+  setLinkPreviews(prefs.get('linkPreview'));
   prefs.onChange((what) => {
+    if (what === 'linkPreview') setLinkPreviews(prefs.get('linkPreview'));
     if (what === 'density') { tree.measure(); tree.rebuild(); }
     if (what === 'treeOpen' || what === 'tocOpen' || what === 'toolkitOpen') applyPanels();
   });
@@ -704,7 +758,7 @@ async function boot() {
     const ctrl = e.ctrlKey || e.metaKey;
     const key = e.key.toLowerCase();
     if (document.querySelector('.dialog-scrim')) return;
-    if (ctrl && e.key === '`') { e.preventDefault(); terminals?.toggle(); return; }
+    if (ctrl && e.key === '`') { e.preventDefault(); if (!POPOUT) terminals?.toggle(); return; }
     // A terminal gets every key (Ctrl+C, Ctrl+W, Ctrl+K…), like VS Code.
     if (e.target.closest?.('.xterm')) return;
 
@@ -714,6 +768,8 @@ async function boot() {
     if (ctrl && key === 'w') { e.preventDefault(); tabs.close(); return; }
     if (ctrl && e.key === 'Tab') { e.preventDefault(); tabs.cycle(e.shiftKey ? -1 : 1); return; }
     if (ctrl && key === '\\') { e.preventDefault(); toggleFocus(); return; }
+    // In the editor Ctrl+B is bold (desktop/editor-assist.js), as everywhere else people write.
+    if (ctrl && key === 'b' && !e.altKey && e.target.closest?.('.cm-editor')) return;
     if (ctrl && key === 'b' && !e.altKey) { e.preventDefault(); togglePanel('tree'); return; }
     if (ctrl && key === 'b' && e.altKey) { e.preventDefault(); togglePanel('toc'); return; }
     if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); tabs.back(); return; }
@@ -767,7 +823,7 @@ function desktopStateBackend() {
       if (!res.ok) return null;
       return res.json();
     },
-    async save(text) { await call('write', file, text); },
+    async save(text) { if (!POPOUT) await call('write', file, text); },
   };
 }
 
@@ -808,6 +864,7 @@ function buildShell() {
           <button class="btn btn--secondary topbar__tt" id="tt-btn" hidden title="Timetable">${icon('table')}<span>Timetable</span></button>
           <button class="icon-btn" id="review-btn" hidden title="Review flashcards" aria-label="Review flashcards">${icon('book')}<span class="badge" id="review-count"></span></button>
           <button class="icon-btn" id="relax-btn" title="Relax mode" aria-label="Relax mode">${icon('relax')}</button>
+          <button class="icon-btn" id="code-btn" hidden title="VS Code for the web, with Claude beside it" aria-label="VS Code">${icon('brackets')}</button>
           <button class="icon-btn" id="term-btn" hidden title="Terminal (Ctrl+\`)" aria-label="Terminal">${icon('terminal')}</button>
           <button class="icon-btn" id="palette-btn" title="Commands (Ctrl+K)" aria-label="Commands">${icon('command')}</button>
           <button class="icon-btn" id="focus-btn" aria-pressed="false" aria-label="Show or hide the side panels">${icon('sidebars')}</button>
@@ -908,6 +965,7 @@ function buildShell() {
     treeHide: $('#tree-hide'),
     tocHide: $('#toc-hide'),
     paletteBtn: $('#palette-btn'),
+    codeBtn: $('#code-btn'),
     settingsBtn: $('#settings-btn'),
     homeBtn: $('#home-btn'),
     backBtn: $('#back-btn'),

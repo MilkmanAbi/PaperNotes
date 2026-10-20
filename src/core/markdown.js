@@ -18,6 +18,7 @@ import 'katex/contrib/mhchem';   // \ce{H2O} and \pu{} for chemistry
 import hljs from 'highlight.js/lib/common';
 import { scopeCss } from './css-scope.js';
 import { resolveRelative, toHash } from './paths.js';
+import { icon } from '../ui/icons.js';
 
 // ── LaTeX ──────────────────────────────────────────────────────────────
 // A small dollar-delimited math plugin rather than a dependency, so the
@@ -161,7 +162,17 @@ export function highlightCode(code, lang) {
 // The checkbox is the native control, left alone (§1 principle 8), and it
 // is disabled because the file on disk is the truth and a click here would
 // not reach it. Showing an editable control that silently discards the
-// change is exactly the dishonesty PI §1.2 rules out.
+// change is exactly the dishonesty PI §1.2 rules out. The desktop app,
+// which can write the file, switches them on (src/desktop/app.js).
+//
+// Besides [ ] and [x], the states Obsidian themes made popular:
+//   [/] doing  [-] cancelled  [>] moved on  [<] scheduled  [?] question
+//   [!] important  [*] starred
+const TASK_STATES = {
+  '/': ['doing', 'in progress'], '-': ['cancelled', 'cancelled'], '>': ['forwarded', 'moved on'],
+  '<': ['scheduled', 'scheduled'], '?': ['question', 'question'], '!': ['important', 'important'], '*': ['star', 'starred'],
+};
+
 function taskListPlugin(md) {
   md.core.ruler.after('inline', 'task_lists', (state) => {
     const tokens = state.tokens;
@@ -169,25 +180,33 @@ function taskListPlugin(md) {
       if (tokens[i].type !== 'inline') continue;
       if (tokens[i - 1].type !== 'paragraph_open') continue;
       if (tokens[i - 2].type !== 'list_item_open') continue;
-      const m = /^\[([ xX])\]\s+/.exec(tokens[i].content);
+      const m = /^\[([ xX\/\-><?!*])\]\s+/.exec(tokens[i].content);
       if (!m) continue;
 
-      const checked = m[1] !== ' ';
+      const mark = m[1];
+      const checked = mark === 'x' || mark === 'X';
       tokens[i].content = tokens[i].content.slice(m[0].length);
       const children = tokens[i].children;
       if (children && children.length && children[0].type === 'text') {
-        children[0].content = children[0].content.replace(/^\[([ xX])\]\s+/, '');
+        children[0].content = children[0].content.replace(/^\[([ xX\/\-><?!*])\]\s+/, '');
       }
 
       const box = new state.Token('html_inline', '', 0);
-      box.content = `<input type="checkbox" disabled${checked ? ' checked' : ''} aria-label="${checked ? 'done' : 'not done'}"> `;
+      const special = TASK_STATES[mark];
+      box.content = special
+        ? `<span class="task-mark" data-state="${special[0]}" role="img" aria-label="${special[1]}"></span> `
+        : `<input type="checkbox" disabled${checked ? ' checked' : ''} aria-label="${checked ? 'done' : 'not done'}"> `;
       children.unshift(box);
 
       tokens[i - 2].attrJoin('class', 'task-list-item');
       tokens[i - 2].attrSet('data-checked', String(checked));
+      if (special) tokens[i - 2].attrSet('data-task', special[0]);
       // Walk back to the list that owns this item.
       for (let j = i - 3; j >= 0; j--) {
-        if (tokens[j].type === 'bullet_list_open') { tokens[j].attrJoin('class', 'task-list'); break; }
+        if (tokens[j].type === 'bullet_list_open') {
+          if (!/\btask-list\b/.test(tokens[j].attrGet('class') || '')) tokens[j].attrJoin('class', 'task-list');
+          break;
+        }
         if (tokens[j].type === 'bullet_list_close') break;
       }
     }
@@ -222,7 +241,7 @@ function anchorPlugin(md) {
       // placeholders into a heading's source, and neither belongs in the
       // contents panel or the slug.
       const text = (inline?.children
-        ? inline.children.filter((t) => t.type === 'text' || t.type === 'code_inline' || t.type === 'math_inline')
+        ? inline.children.filter((t) => t.type === 'text' || t.type === 'code_inline' || t.type === 'math_inline' || t.type === 'pn_hashtag')
           .map((t) => t.content).join('')
         : inline?.content ?? '').replace(HELD_RE, '').replace(/\s+/g, ' ').trim();
       const slug = slugify(text, used);
@@ -259,10 +278,20 @@ const HELD_OPEN = String.fromCharCode(0xe000);
 const HELD_CLOSE = String.fromCharCode(0xe001);
 const HELD_RE = new RegExp(`${HELD_OPEN}(\\d+)${HELD_CLOSE}`, 'g');
 
+// [default title, icon]. PaperNotes' own types first, then Obsidian's
+// (help.obsidian.md/callouts), so notes written in Obsidian render the same.
 const CALLOUTS = {
-  key: 'Key idea', exam: 'Exam bait', trap: 'Trap', lol: 'Brain break',
-  mem: 'Remember it like this', ex: 'Worked example', code: 'Code', tip: 'Tip',
-  why: 'Why tho', note: 'Note', warn: 'Careful',
+  key: ['Key idea', 'key'], exam: ['Exam bait', 'target'], trap: ['Trap', 'alert'], lol: ['Brain break', 'smile'],
+  mem: ['Remember it like this', 'bulb'], ex: ['Worked example', 'edit'], code: ['Code', 'brackets'], tip: ['Tip', 'flame'],
+  why: ['Why tho', 'question'], note: ['Note', 'edit'], warn: ['Careful', 'alert'],
+  abstract: ['Abstract', 'clipboard'], info: ['Info', 'info'], todo: ['Todo', 'checkCircle'], success: ['Success', 'check'],
+  question: ['Question', 'question'], warning: ['Warning', 'alert'], failure: ['Failure', 'xCircle'], danger: ['Danger', 'zap'],
+  bug: ['Bug', 'bug'], example: ['Example', 'list'], quote: ['Quote', 'quote'],
+};
+const CALLOUT_ALIAS = {
+  summary: 'abstract', tldr: 'abstract', hint: 'tip', important: 'tip', check: 'success', done: 'success',
+  help: 'question', faq: 'question', caution: 'warning', attention: 'warning', fail: 'failure', missing: 'failure',
+  error: 'danger', cite: 'quote',
 };
 const TAGS = {
   OFF: ['off', 'official'], ME: ['me', 'worked by me'], HY: ['hy', 'high-yield'], NEW: ['new', 'new'],
@@ -274,13 +303,24 @@ function studySource(body, held) {
   const hold = (html) => `${HELD_OPEN}${held.push(html) - 1}${HELD_CLOSE}`;
   const prose = (p) => p
     .replace(/\{k:([^{}\n]+?)\}/g, (_, t) => hold(`<span class="c-k">${escapeHtml(t)}</span>`))
+    // ![[Note]], ![[Note#Heading]], ![[Note#^block]], ![[pic.png|300]]: filled in
+    // after render (ui/embeds.js); until then, or if nothing matches, the text stays.
+    .replace(/!\[\[([^\]|#\n]*?)(#[^\]|\n]*)?(?:\|([^\]\n]*))?\]\]/g, (all, name, anchor = '', opt = '') => (name.trim() || anchor
+      ? hold(`<span class="embed" data-name="${escapeHtml(name.trim())}" data-anchor="${escapeHtml(anchor.slice(1))}" data-opt="${escapeHtml(opt.trim())}">${escapeHtml(all)}</span>`)
+      : all))
+    // ==r:text== and friends: the highlighter in another colour.
+    .replace(/==([rogbpy]):(?=\S)([^=\n]*?[^\s=])==/g, '<mark class="hl hl--$1">$2</mark>')
     // Tight to the words, so `a == b && c == d` in pasted code stays code.
     .replace(/==(?=\S)([^=\n]*?[^\s=])==/g, '<mark class="hl">$1</mark>')
     .replace(/\{([rogbp]):([^{}\n]+?)\}/g, '<span class="c-$1">$2</span>')
     .replace(/\[\[(OFF|ME|HY|NEW)\]\]/g, (_, t) =>
       hold(`<span class="tag tag--${TAGS[t][0]}">${TAGS[t][1]}</span>`))
-    .replace(/\[\[([^\]|#\n]+?)(#[^\]|\n]+)?(?:\|([^\]\n]+))?\]\]/g, (_, name, anchor = '', label) =>
-      `<a class="wikilink" href="wiki:${encodeURIComponent(name.trim())}${anchor}">${escapeHtml((label || name).trim())}</a>`)
+    // [[Note]], [[Note#Heading|label]], [[Note#^block]], and [[#Heading]] in the same note.
+    .replace(/\[\[([^\]|#\n]*?)(#[^\]|\n]+)?(?:\|([^\]\n]+))?\]\]/g, (all, name, anchor = '', label) => {
+      if (!name.trim() && !anchor) return all;
+      const shown = label || name.trim() || anchor.split('#').pop().replace(/^\^/, '');
+      return `<a class="wikilink" href="wiki:${encodeURIComponent(name.trim())}${anchor}">${escapeHtml(shown.trim())}</a>`;
+    })
     .replace(/↔/g, '⟷');   // ↔ renders as an emoji in some fonts
 
   let out = '';
@@ -297,31 +337,62 @@ function studySource(body, held) {
 function studyHtml(html, held) {
   if (held.length) html = html.replace(HELD_RE, (_, i) => held[+i]);
 
-  // Callouts: a blockquote whose first line is [!type] or [!type|title].
+  // Callouts: a blockquote whose first line is [!type], as in Obsidian:
+  //   > [!tip] Optional title       text after the type is the title
+  //   > [!faq]- Folded              - starts folded, + starts open
+  //   > [!exam|Title]               PaperNotes' own way to give a title
   // Nesting is tracked so a plain quote inside a callout stays a quote.
   if (html.includes('[!')) {
     const stack = [];
     let out = '';
     let last = 0;
-    const re = /<blockquote( data-line="\d+")?>\s*(<p[^>]*>\[!(\w+)(?:\|([^\]\n]+))?\]\s*)?|<\/blockquote>/g;
+    const re = /<blockquote([^>]*)>\s*(<p[^>]*>\[!([\w-]+)(?:\|([^\]\n]+))?\]([+-]?)[ \t]*)?|<\/blockquote>/g;
     let m;
     while ((m = re.exec(html))) {
       out += html.slice(last, m.index);
       last = re.lastIndex;
       if (m[0].startsWith('</')) {
-        out += stack.pop() ? '</div></aside>' : '</blockquote>';
-      } else if (m[3]) {
-        const type = m[3].toLowerCase();
-        stack.push(true);
-        out += `<aside class="callout callout--${escapeHtml(type)}"${m[1] || ''}><div class="callout__title">` +
-          `${m[4] || CALLOUTS[type] || escapeHtml(type)}</div><div class="callout__body"><p>`;
-      } else {
-        stack.push(false);
+        out += stack.pop() || '</blockquote>';
+        continue;
+      }
+      if (!m[3]) {
+        stack.push('');
         out += m[0];
+        continue;
+      }
+      const written = m[3].toLowerCase();
+      const type = CALLOUT_ALIAS[written] || written;
+      const [fallback, glyph] = CALLOUTS[type] || [written[0].toUpperCase() + written.slice(1), 'edit'];
+      // The rest of the first line, up to the line break or the paragraph's end.
+      const nl = html.indexOf('\n', last);
+      const pEnd = html.indexOf('</p>', last);
+      const lineEnd = nl !== -1 && nl < pEnd ? nl : pEnd;
+      const sameLine = html.slice(last, lineEnd).trim();
+      let title = m[4] || fallback;
+      let body = '<p>';
+      if (!m[4] && sameLine) {
+        title = sameLine;
+        last = lineEnd === pEnd ? pEnd + 4 : lineEnd + 1;
+        if (lineEnd === pEnd) body = '';
+      } else if (!sameLine && lineEnd === nl) {
+        last = nl + 1;   // the body starts on the next line
+      }
+      const head = `${icon(glyph, 'icon callout__icon')}<span class="callout__label">${title}</span>`;
+      const cls = `callout callout--${escapeHtml(type)}`;
+      if (m[5]) {
+        stack.push('</div></details>');
+        out += `<details class="${cls} callout--fold"${m[5] === '+' ? ' open' : ''}${m[1]}><summary class="callout__title">${head}${icon('chevronDown', 'icon callout__fold')}</summary><div class="callout__body">${body}`;
+      } else {
+        stack.push('</div></aside>');
+        out += `<aside class="${cls}"${m[1]}><div class="callout__title">${head}</div><div class="callout__body">${body}`;
       }
     }
-    html = (out + html.slice(last)).replace(/<div class="callout__body"><p>\s*<\/p>/g, '<div class="callout__body">');
+    html = (out + html.slice(last)).replace(/<div class="callout__body"><p>\s*<\/p>/g, '<div class="callout__body">')
+      .replace(/<div class="callout__body">\s*<\/div>/g, '<div class="callout__body"></div>');
   }
+
+  // A paragraph that is only an embed is a block of its own.
+  html = html.replace(/<p((?: [\w-]+="[^"]*")*)>\s*(<span class="embed"[^>]*>[^<]*<\/span>)\s*<\/p>/g, '<div class="embed-block"$1>$2</div>');
 
   // A paragraph that is only an image becomes a captioned figure; a title
   // of "60%" sets its width and "80%!" marks a figure allowed to be tall.
@@ -375,6 +446,14 @@ function sourceLinePlugin(md) {
     if (lang === 'mermaid') {
       return `<div class="mermaid-block" data-mermaid="${encodeURIComponent(t.content)}"><pre class="mermaid-src">${escapeHtml(t.content)}</pre></div>\n`;
     }
+    //   ```tree / ```tree down     an indented outline drawn as a tree
+    //   ```flow / ```flow right    the easy flowchart syntax (ui/diagrams.js)
+    // A block of box-drawing characters is ASCII art someone already drew:
+    // that stays exactly as written.
+    if ((lang === 'tree' || lang === 'flow') && !/[├└│┌┐┘┬┴┼─]/.test(t.content)) {
+      const opts = info.slice(lang.length).trim();
+      return `<div class="pn-diagram pn-${lang}" data-src="${encodeURIComponent(t.content)}" data-opts="${escapeHtml(opts)}"><pre class="pn-diagram__src">${escapeHtml(t.content)}</pre></div>\n`;
+    }
     const run = /\b(run|live)\b/.exec(info);
     if (run && /^(html|js|javascript)$/.test(lang)) {
       const kind = lang === 'html' ? 'html' : 'js';
@@ -392,6 +471,113 @@ function sourceLinePlugin(md) {
   };
 }
 
+// ── Obsidian extras ────────────────────────────────────────────────────
+// Token rules rather than source rewrites, so none of them can fire inside
+// code, maths, raw HTML or a note's own <style>.
+
+// %% a comment %% is left out of the rendered note; a line starting with %%
+// runs to the next %% and hides a whole block.
+function commentPlugin(md) {
+  md.inline.ruler.before('emphasis', 'pn_comment', (state) => {
+    const start = state.pos;
+    if (state.src.charCodeAt(start) !== 0x25 || state.src.charCodeAt(start + 1) !== 0x25) return false;
+    const end = state.src.indexOf('%%', start + 2);
+    if (end === -1 || end >= state.posMax) return false;
+    state.pos = end + 2;
+    return true;
+  });
+  md.block.ruler.before('paragraph', 'pn_comment_block', (state, startLine, endLine, silent) => {
+    const pos = state.bMarks[startLine] + state.tShift[startLine];
+    if (state.sCount[startLine] - state.blkIndent >= 4) return false;
+    if (state.src.slice(pos, pos + 2) !== '%%') return false;
+    const first = state.src.slice(pos + 2, state.eMarks[startLine]);
+    let line = startLine;
+    let found = first.includes('%%');
+    // "%% aside %% and the rest" is a sentence with a comment in it, not a block.
+    if (found && first.slice(first.indexOf('%%') + 2).trim()) return false;
+    while (!found && ++line < endLine) {
+      found = state.src.slice(state.bMarks[line] + state.tShift[line], state.eMarks[line]).includes('%%');
+    }
+    if (!found) return false;
+    if (!silent) state.line = line + 1;
+    return true;
+  }, { alt: ['paragraph', 'reference', 'blockquote', 'list'] });
+}
+
+// #tag in prose. It needs a letter (#2024 and the HDB unit #05-67 are not
+// tags) and must start a word, so C#, URLs and #fff-style colours stay as
+// they are. C's preprocessor words are never tags: EEE notes say "#include"
+// in plain sentences all the time.
+const TAG_RE = /^#([\p{L}\p{N}_/-]+)/u;
+const NOT_TAGS = new Set(['include', 'define', 'undef', 'if', 'ifdef', 'ifndef', 'elif', 'else', 'endif', 'pragma', 'error', 'warning', 'import', 'line']);
+function hashtagPlugin(md) {
+  md.inline.ruler.after('pn_comment', 'pn_hashtag', (state, silent) => {
+    const start = state.pos;
+    const src = state.src;
+    if (src.charCodeAt(start) !== 0x23 || state.linkLevel > 0) return false;
+    if (start > 0 && !/[\s([,;]/.test(src[start - 1])) return false;
+    const m = TAG_RE.exec(src.slice(start, start + 120));
+    if (!m) return false;
+    const tag = m[1].replace(/[/-]+$/, '');
+    if (!/\p{L}/u.test(tag) || /^[0-9a-f]{3}(?:[0-9a-f]{3})?$/i.test(tag) || NOT_TAGS.has(tag.toLowerCase())) return false;
+    if (!silent) state.push('pn_hashtag', '', 0).content = tag;
+    state.pos = start + 1 + tag.length;
+    return true;
+  });
+  md.renderer.rules.pn_hashtag = (tokens, i) =>
+    `<span class="hashtag" role="link" tabindex="0" data-tag="${escapeHtml(tokens[i].content)}">#${escapeHtml(tokens[i].content)}</span>`;
+}
+
+// Block references: "a paragraph ^my-id" or a line of just "^my-id" after a
+// list, quote or table names that block, so [[Note#^my-id]] can link to it
+// and ![[Note#^my-id]] can embed it. The id is not shown.
+const BLOCK_ID_END = /\s\^([A-Za-z0-9-]+)\s*$/;
+const BLOCK_ID_ONLY = /^\^([A-Za-z0-9-]+)$/;
+
+function openerBefore(tokens, idx) {
+  const close = tokens[idx - 1];
+  if (!close) return null;
+  if (close.nesting === 0) return close.block ? close : null;   // hr, fence, maths
+  if (close.nesting !== -1) return null;
+  const want = close.type.replace(/_close$/, '_open');
+  let depth = 0;
+  for (let j = idx - 1; j >= 0; j--) {
+    if (tokens[j].type === close.type) depth++;
+    else if (tokens[j].type === want && --depth === 0) return tokens[j];
+  }
+  return null;
+}
+
+function blockIdPlugin(md) {
+  md.core.ruler.after('inline', 'block_ids', (state) => {
+    const tokens = state.tokens;
+    for (let i = 1; i < tokens.length; i++) {
+      const t = tokens[i];
+      if (t.type !== 'inline' || !t.children?.length) continue;
+      const open = tokens[i - 1];
+      const only = BLOCK_ID_ONLY.exec(t.content.trim());
+      if (only && open.type === 'paragraph_open' && tokens[i + 1]?.type === 'paragraph_close') {
+        const target = openerBefore(tokens, i - 1);
+        if (target && target.level === open.level) {
+          target.attrSet('id', `^${only[1]}`);
+          tokens.splice(i - 1, 3);
+          i -= 2;
+          continue;
+        }
+      }
+      const lastChild = t.children[t.children.length - 1];
+      if (lastChild.type !== 'text') continue;
+      const m = BLOCK_ID_END.exec(lastChild.content);
+      if (!m) continue;
+      lastChild.content = lastChild.content.slice(0, m.index);
+      t.content = t.content.replace(BLOCK_ID_END, '');
+      const owner = tokens[i - 2]?.type === 'list_item_open' ? tokens[i - 2] : open;
+      owner.attrSet('id', `^${m[1]}`);
+    }
+    return true;
+  });
+}
+
 // ── The instance ───────────────────────────────────────────────────────
 function createMarkdownIt() {
   const md = new MarkdownIt({
@@ -402,9 +588,13 @@ function createMarkdownIt() {
     // markdown-it only takes this verbatim when it starts with `<pre`;
     // anything else gets escaped and wrapped, which would nest one code
     // block inside another (§11.3 — containers never nest).
-    highlight(code, lang) {
+    // ```js title="blink.js" puts a file name on the block instead of the language.
+    highlight(code, lang, attrs = '') {
       const language = lang && hljs.getLanguage(lang) ? lang : null;
-      const label = lang ? `<span class="code-lang">${escapeHtml(lang)}</span>` : '';
+      const named = /\btitle=(?:"([^"]+)"|'([^']+)'|(\S+))/.exec(attrs);
+      const title = named ? named[1] || named[2] || named[3] : '';
+      const label = title ? `<span class="code-lang code-lang--title">${escapeHtml(title)}</span>`
+        : lang ? `<span class="code-lang">${escapeHtml(lang)}</span>` : '';
       let html;
       try {
         html = language
@@ -420,6 +610,9 @@ function createMarkdownIt() {
 
   md.use(footnote);
   md.use(mathPlugin);
+  md.use(commentPlugin);
+  md.use(hashtagPlugin);
+  md.use(blockIdPlugin);
   md.use(taskListPlugin);
   md.use(anchorPlugin);
   md.use(sourceLinePlugin);
@@ -452,6 +645,14 @@ export function stripFrontMatter(raw) {
     if (pair) frontMatter[pair[1]] = pair[2].trim();
   }
   return { body: raw.slice(m[0].length), frontMatter };
+}
+
+/** One line of inline Markdown (bold, ==highlight==, [[links]], $maths$), for
+ *  the labels inside tree and flow diagrams. */
+export function renderLabel(text) {
+  const held = [];
+  const html = md.renderInline(studySource(text, held));
+  return held.length ? html.replace(HELD_RE, (_, i) => held[+i]) : html;
 }
 
 // ── Rendering ──────────────────────────────────────────────────────────
@@ -501,9 +702,16 @@ export function rewriteLinks(root, notePath, { exists, resolveWiki } = {}) {
     if (!href) continue;
 
     if (href.startsWith('wiki:')) {
-      const [name, anchor] = safeDecode(href.slice(5)).split('#');
+      // Note#Heading, Note#Heading#Subheading (the last one wins), Note#^block-id.
+      const [name, ...parts] = safeDecode(href.slice(5)).split('#');
+      const anchor = wikiAnchor(parts[parts.length - 1] || '');
+      if (!name) {
+        a.setAttribute('href', `${window.location.hash.split('#').slice(0, 2).join('#')}#${anchor}`);
+        a.dataset.inNote = 'true';
+        continue;
+      }
       const target = resolveWiki?.(name);
-      if (target) a.setAttribute('href', toHash(target, anchor ? slugify(anchor, new Set()) : ''));
+      if (target) a.setAttribute('href', toHash(target, anchor));
       else { a.setAttribute('href', '#'); a.dataset.missing = 'true'; a.title = `No note called ${name}`; }
       continue;
     }
@@ -555,6 +763,13 @@ export function rewriteLinks(root, notePath, { exists, resolveWiki } = {}) {
 
 function safeDecode(s) {
   try { return decodeURIComponent(s); } catch { return s; }
+}
+
+/** The element id a wikilink's #part points at: a heading's slug, or a
+ *  block id (^id) exactly as written. */
+export function wikiAnchor(part) {
+  if (!part) return '';
+  return part.startsWith('^') ? part : slugify(part, new Set());
 }
 
 /** Wrap matches of the current search terms, for the opened note. */

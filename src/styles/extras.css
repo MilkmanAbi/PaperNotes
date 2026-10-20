@@ -660,3 +660,114 @@
 .upd__bar i { display: block; height: 100%; background: var(--accent); transition: width 0.25s linear; }
 .upd__actions { display: flex; justify-content: flex-end; gap: var(--space-1); }
 .upd__actions .btn { text-decoration: none; }
+
+/* ── Custom theme (Settings → Appearance) ────────────────────────────── */
+.theme-card--custom .theme-card__name::after {
+  content: "Yours";
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-muted);
+  color: var(--accent);
+  font-size: var(--type-caption);
+  font-weight: 600;
+}
+.custom-theme { margin: 0 0 var(--space-4); padding: var(--space-1) var(--space-3) var(--space-3); border: 1px solid var(--accent-muted); border-radius: 10px; background: var(--accent-faint); }
+.custom-theme .setting:last-of-type { border-bottom: none; }
+.custom-theme select, .fontpick__search {
+  height: var(--bar-h);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-canvas);
+  color: var(--ink-primary);
+  font: inherit;
+  font-size: var(--type-body-sm);
+  color-scheme: inherit;
+}
+.custom-theme__warn { margin: var(--space-2) 0 0; color: var(--confused); }
+.swatches { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.swatch {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 2px solid var(--surface-raised);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--hairline-strong);
+  cursor: pointer;
+}
+.swatch:hover { transform: scale(1.08); }
+.swatch[aria-checked="true"] { box-shadow: 0 0 0 2px var(--ink-primary); }
+.swatch--own { display: grid; place-items: center; background: var(--surface-sunken); color: var(--ink-secondary); overflow: hidden; }
+.swatch--own .icon { width: 14px; height: 14px; }
+.swatch--own input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; border: 0; padding: 0; }
+
+/* the mini app preview */
+.tprev-pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-top: var(--space-3); }
+@media (max-width: 720px) { .tprev-pair { grid-template-columns: 1fr; } }
+.tprev__label { font-size: var(--type-caption); color: var(--ink-tertiary); margin-bottom: 4px; }
+.tprev__app { display: grid; grid-template-columns: 26% 1fr; height: 158px; border-radius: 8px; overflow: hidden; border: 1px solid var(--hairline); background: var(--tp-canvas); color: var(--tp-ink); font-family: var(--font-ui); }
+.tprev__side { display: flex; flex-direction: column; gap: 6px; padding: 12px 8px; }
+.tprev__side i { display: block; height: 8px; border-radius: 3px; background: currentColor; opacity: 0.16; }
+.tprev__side i.is-on { opacity: 1; background: color-mix(in srgb, var(--tp-accent) 32%, transparent); box-shadow: inset 2px 0 0 var(--tp-accent); }
+.tprev__sheet { margin: 8px 8px 0 0; padding: 9px 11px; border-radius: 6px 6px 0 0; background: var(--tp-raised); font-size: 9.5px; line-height: 1.45; overflow: hidden; }
+.tprev__h { font-family: var(--font-reading); font-weight: 600; font-size: 13px; margin-bottom: 3px; }
+.tprev__sheet p { margin: 0 0 6px; font-family: var(--font-reading); }
+.tprev__sheet mark { background: var(--tp-hl); color: inherit; padding: 0 1px; }
+.tprev__link { color: var(--tp-accent); text-decoration: underline; text-underline-offset: 2px; }
+.tprev__callout { display: flex; flex-direction: column; padding: 4px 7px; margin-bottom: 6px; border-left: 2px solid var(--tp-blue); border-radius: 3px; background: color-mix(in srgb, var(--tp-blue) 12%, transparent); }
+.tprev__callout b { font-size: 7.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tp-blue); }
+.tprev__row { display: flex; align-items: center; gap: 6px; }
+.tprev__btn { padding: 2px 9px; border-radius: 4px; background: var(--tp-accent); color: var(--tp-on); font-weight: 600; }
+.tprev__check { display: grid; place-items: center; width: 12px; height: 12px; border-radius: 3px; background: var(--tp-accent); color: var(--tp-on); }
+.tprev__check .icon { width: 10px; height: 10px; stroke-width: 3; }
+.tprev__tag { padding: 0 6px; border-radius: 99px; color: var(--tp-accent); background: color-mix(in srgb, var(--tp-accent) 14%, transparent); }
+
+/* ── Typeface pickers (Settings → Reading) ───────────────────────────── */
+.fontpick { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2); width: min(100%, 520px); }
+.fontpick__current { min-width: 220px; justify-content: space-between; }
+.fontpick__current span { font-size: var(--type-body); }
+.fontpick__panel { width: 100%; border: 1px solid var(--hairline-strong); border-radius: 10px; background: var(--surface-raised); box-shadow: var(--elevation-1); overflow: hidden; }
+.fontpick__top { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2); border-bottom: 1px solid var(--hairline); background: var(--surface-sunken); }
+.fontpick__search { width: 100%; }
+.fontpick__sample { display: flex; flex-direction: column; gap: 2px; min-height: 64px; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--surface-raised); }
+.fontpick__sample b { font-size: 1.2em; font-weight: 600; }
+.fontpick__list { max-height: 360px; overflow: auto; padding: 4px; }
+.fontpick__group { padding: 10px 10px 4px; font-size: var(--type-caption); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-tertiary); }
+.fontpick__item { display: flex; align-items: baseline; gap: var(--space-3); width: 100%; padding: 6px 10px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--ink-primary); text-align: left; cursor: pointer; }
+.fontpick__item:hover, .fontpick__item:focus-visible { background: var(--accent-faint); outline: none; }
+.fontpick__item[aria-selected="true"] { background: var(--accent-muted); }
+.fontpick__item:disabled { opacity: 0.45; cursor: not-allowed; }
+.fontpick__name { font-size: 17px; line-height: 1.3; white-space: nowrap; }
+.fontpick__note { margin-left: auto; font-size: var(--type-caption); color: var(--ink-tertiary); text-align: right; }
+.fontpick__sample > * + * { margin-top: 0; }
+.tprev__btn { flex: none; white-space: nowrap; }
+
+/* ── VS Code for the web (desktop/webtab.js) ─────────────────────────── */
+.reader__sheet.webtab { display: flex; flex-direction: column; gap: var(--space-2); max-width: none; margin: var(--space-2); padding: var(--space-2); }
+.webtab__bar { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.webtab__address {
+  flex: 1 1 260px;
+  min-width: 140px;
+  height: var(--bar-h);
+  padding: 0 12px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--ink-primary);
+  font: inherit;
+  font-size: var(--type-body-sm);
+}
+.webtab__address:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+.webtab__gap { flex: 0 0 var(--space-2); }
+.webtab__bar .btn { height: var(--bar-h); }
+.webtab__frame {
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  overflow: hidden;
+}

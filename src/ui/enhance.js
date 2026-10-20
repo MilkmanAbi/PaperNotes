@@ -1,36 +1,57 @@
 /** What a rendered note gets after it is on screen:
  *
  *  - a Copy button on every code block
- *  - Mermaid diagrams drawn from ```mermaid fences (the library is loaded
- *    the first time a note has one)
+ *  - diagrams: ```mermaid, and the easy ```tree and ```flow (ui/diagrams.js)
  *  - Run on ```html run / ```js run blocks: the code runs in a sandboxed
  *    frame under the block (scripts, no access to the app or your files);
  *    ```html live runs straight away
+ *  - ![[embeds]] filled in (ui/embeds.js) and a preview card when you hover
+ *    a link to another note (ui/preview.js)
+ *  - #tags that search when clicked
  *  - click an image to see it full size
- *  - selecting maths copies its LaTeX (KaTeX's copy-tex) */
+ *  - selecting maths copies its LaTeX (KaTeX's copy-tex)
+ *
+ *  `ctx` says where the note lives and how to reach other notes (see
+ *  Reader.enhanceContext). Without it, a note still gets everything that
+ *  needs nothing outside itself. */
 
 import 'katex/contrib/copy-tex';
 import { icon } from './icons.js';
-
-let mermaidLoad = null;
-let mermaidSeq = 0;
+import { drawDiagrams } from './diagrams.js';
+import { resolveEmbeds } from './embeds.js';
+import { linkPreviews } from './preview.js';
 
 function dark() {
   const t = document.documentElement.dataset.theme;
   return t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
 }
 
-export function enhance(root) {
+export function enhance(root, ctx = {}) {
   if (!root) return;
+  const full = { ...ctx, enhance };
   copyButtons(root);
   zoomImages(root);
-  runBlocks(root);
-  diagrams(root);
+  runBlocks(root, full);
+  hashtags(root, full);
+  if (full.resolveWiki && full.fetchText) {
+    resolveEmbeds(root, full).then(() => drawDiagrams(root, full));
+    if (full.preview !== false) linkPreviews(root, full);
+  } else {
+    drawDiagrams(root, full);
+  }
+}
+
+function hashtags(root, ctx) {
+  if (root.dataset.tags || !ctx.search) return;
+  root.dataset.tags = '1';
+  const go = (el) => ctx.search(el.dataset.tag);
+  root.addEventListener('click', (e) => { const t = e.target.closest('.hashtag'); if (t) { e.preventDefault(); go(t); } });
+  root.addEventListener('keydown', (e) => { const t = e.target.closest?.('.hashtag'); if (t && e.key === 'Enter') go(t); });
 }
 
 function copyButtons(root) {
   for (const pre of root.querySelectorAll('pre')) {
-    if (pre.querySelector('.copy-btn') || pre.closest('.mermaid-block') || pre.classList.contains('nb-out')) continue;
+    if (pre.querySelector('.copy-btn') || pre.closest('.mermaid-block, .pn-diagram') || pre.classList.contains('nb-out')) continue;
     const b = document.createElement('button');
     b.className = 'copy-btn';
     b.type = 'button';
@@ -97,7 +118,7 @@ addEventListener('unhandledrejection',(e)=>out('Unhandled: '+fmt(e.reason),'e'))
   return `${base}<body>${shim}${body}${report}`;
 }
 
-function runBlocks(root) {
+function runBlocks(root, ctx = {}) {
   for (const block of root.querySelectorAll('.runblock')) {
     if (block.dataset.ready) continue;
     block.dataset.ready = '1';
@@ -121,30 +142,7 @@ function runBlocks(root) {
       bar.querySelector('span').textContent = 'Run again';
     };
     bar.querySelector('.runblock__run').onclick = run;
-    if (block.dataset.auto === 'true') run();
-  }
-}
-
-// ── diagrams ────────────────────────────────────────────────────────────
-async function diagrams(root) {
-  const blocks = [...root.querySelectorAll('.mermaid-block:not([data-done])')];
-  if (!blocks.length) return;
-  mermaidLoad ||= import('mermaid').then((m) => m.default);
-  const mermaid = await mermaidLoad;
-  mermaid.initialize({
-    startOnLoad: false,
-    securityLevel: 'strict',
-    theme: dark() ? 'dark' : 'neutral',
-    fontFamily: 'Inter, "Segoe UI", system-ui, sans-serif',
-  });
-  for (const b of blocks) {
-    b.dataset.done = '1';
-    const src = decodeURIComponent(b.dataset.mermaid || '');
-    try {
-      const { svg } = await mermaid.render(`pn-mermaid-${++mermaidSeq}`, src);
-      b.innerHTML = svg;
-    } catch (err) {
-      b.insertAdjacentHTML('beforeend', `<p class="mermaid-error">Diagram error: ${String(err?.message || err).replace(/[<&]/g, '')}</p>`);
-    }
+    // ```html live runs on its own, except in a hover preview, which is only a glance.
+    if (block.dataset.auto === 'true' && ctx.autoRun !== false) run();
   }
 }

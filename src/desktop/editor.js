@@ -20,6 +20,7 @@ import { renderNote, rewriteLinks } from '../core/markdown.js';
 import { enhance } from '../ui/enhance.js';
 import { assetUrl, encodePath } from '../core/paths.js';
 import { icon } from '../ui/icons.js';
+import { assistExtensions } from './editor-assist.js';
 
 // ── confused marks inside the editor ───────────────────────────────────
 const setMarks = StateEffect.define();
@@ -194,6 +195,8 @@ export class Editor {
           markdown(),
           syntaxHighlighting(highlight),
           theme,
+          // Before the editor's own keys, so Escape closes the menu first.
+          assistExtensions({ store: this.store, reader: this.reader }),
           keymap.of([
             { key: 'Mod-s', run: save, preventDefault: true },
             { key: 'Escape', run: () => { this.close(); return true; } },
@@ -238,7 +241,7 @@ export class Editor {
     this.preview.innerHTML = html;
     this.reader._setStyles(css);
     rewriteLinks(this.preview, this.path, { exists: (p) => this.reader._indexHas(p), resolveWiki: (n) => this.reader.resolveWiki(n) });
-    enhance(this.preview);
+    enhance(this.preview, this.reader.enhanceContext(this.path, this.text));
     this.reader.headings = headings;
     this.reader._emitHeadings();
     this._follow();

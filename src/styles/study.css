@@ -88,6 +88,13 @@
 .note-content h3 { font-size: calc(var(--type-h3) * var(--reader-scale, 1)); }
 :root[data-reader-font="sans"] .note-content,
 :root[data-reader-font="sans"] .note-content :is(h1, h2, h3, h4, h5, h6) { font-family: var(--font-ui); }
+/* A typeface picked in Settings → Reading (src/core/fonts.js): notes, their
+   headings, and code in notes and in the editor. */
+:root[data-note-font] .note-content,
+:root[data-note-font] .note-content :is(h1, h2, h3, h4, h5, h6) { font-family: var(--note-font); }
+:root[data-heading-font] .note-content :is(h1, h2, h3, h4, h5, h6) { font-family: var(--note-heading-font); }
+:root[data-code-font] .note-content :is(pre, code, kbd, samp),
+:root[data-code-font] .cm-scroller { font-family: var(--note-code-font) !important; }
 
 /* ── Tabs ────────────────────────────────────────────────────────────── */
 .tabbar {

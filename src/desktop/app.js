@@ -13,18 +13,22 @@
  *  main.js calls initDesktop() once everything else exists, and asks
  *  beforeShow() before any navigation, so unsaved edits are saved first. */
 
-import { call, onEvent, nativeMenu } from './bridge.js';
+import { call, onEvent, nativeMenu, windowNumber } from './bridge.js';
 import { indexNotesFolder } from './indexer.js';
+import { Backlinks } from './backlinks.js';
+import { linkPreviews } from '../ui/preview.js';
+import { attachTreeDrop } from './tree-drop.js';
 import { Editor } from './editor.js';
 import { askName } from '../ui/dialog.js';
 import { useLocalDb } from '../core/db.js';
 import { fileKind } from '../core/filetypes.js';
+import { toHash } from '../core/paths.js';
 import { icon } from '../ui/icons.js';
 import { studyWithClaude, applyInbox, writeSession } from './claude.js';
 import { STARTER, INFO, editProfile, loadProfile } from '../ui/profile.js';
 
 const M = {
-  OPEN: 1, OPEN_APP: 2, REVEAL: 3, EDIT: 4, NEW_TAB: 5,
+  OPEN: 1, OPEN_APP: 2, REVEAL: 3, EDIT: 4, NEW_TAB: 5, NEW_WINDOW: 6,
   NEW_NOTE: 10, NEW_FOLDER: 11, IMPORT: 12,
   RENAME: 20, TRASH: 21, RESTORE: 22, COPY_PATH: 23,
   FOLDER: 30,
@@ -34,6 +38,9 @@ const M = {
 export function initDesktop(ctx) {
   const { store, search, tree, reader, router, toasts, prefs, shell, show, rerunSearch, setTotals, state, tabs, study, hostInfo, terminals, split } = ctx;
   const info = hostInfo;
+
+  // What this PaperNotes.exe can do (an older one, from before 2.4, says nothing).
+  const hasFeature = (f) => Array.isArray(info.features) && info.features.includes(f);
 
   const editor = new Editor({
     reader, store, toasts, state, prefs,
@@ -78,12 +85,71 @@ export function initDesktop(ctx) {
     },
   });
 
+  // ── drag and drop in the Notes panel ──────────────────────────────────
+  attachTreeDrop({ tree, store, toasts, refresh: () => refresh(), router, moveTo: (from, to) => moveTo(from, to), dragOut: hasFeature('dragOut') });
+
+  // ── ticking a task, and the notes that link here ──────────────────────
+  const backlinks = new Backlinks(reader);
+  backlinks.set(ctx.links);
+  reader.use({
+    after: (c) => {
+      if (c.kind !== 'note' || !c.article) return;
+      // Not while the same note is open in the editor: its next save would undo the tick.
+      if (c.raw != null && !(editor.active && editor.path === c.path)) {
+        for (const box of c.article.querySelectorAll('li.task-list-item[data-line] input[type="checkbox"]')) {
+          if (box.closest('li') !== box.closest('li.task-list-item[data-line]')) continue;
+          box.disabled = false;
+          box.classList.add('is-live');
+          box.title = 'Tick it: the note is saved with the change';
+          box.addEventListener('change', () => toggleTask(c, box));
+        }
+      }
+      const mentions = backlinks.element(c.path);
+      if (mentions) {
+        const nav = c.sheet.querySelector('.note__nav');
+        c.sheet.insertBefore(mentions, nav || null);
+        linkPreviews(mentions, reader.enhanceContext(c.path));
+      }
+    },
+  });
+
+  /** Flip one task's [ ] / [x] in the file. Only that one character changes,
+   *  and only while the line on disk is still the line that was rendered. */
+  async function toggleTask(c, box) {
+    const li = box.closest('li[data-line]');
+    const n = Number(li.dataset.line);
+    const raw = reader._cache.get(c.path) ?? c.raw;
+    const lines = raw.split('\n');
+    const m = /^(\s*(?:>\s*)*(?:[-*+]|\d+[.)])\s+\[)([ xX])(\][^\n]*)$/.exec(lines[n] ?? '');
+    if (!m || (m[2] !== ' ') === box.checked) {
+      box.checked = !box.checked;
+      toasts.show({ tone: 'error', text: 'That line changed in the file. Reopen the note and try again.' });
+      return;
+    }
+    lines[n] = `${m[1]}${box.checked ? 'x' : ' '}${m[3]}`;
+    const next = lines.join('\n');
+    box.disabled = true;
+    try {
+      await call('write', c.path, next);
+      reader._remember(c.path, next);
+      c.raw = next;
+      li.dataset.checked = String(box.checked);
+      scheduleRefresh(800);
+    } catch (err) {
+      box.checked = !box.checked;
+      toasts.show({ tone: 'error', text: `Could not save: ${err.message}` });
+    } finally {
+      box.disabled = false;
+    }
+  }
+
   /** Claude Code, with the note handed over: in the side pane next to the
    *  note (default), in the terminal panel, or in Windows Terminal. */
   const claude = (path, opts = {}) => studyWithClaude({
     path, state, store, info, toasts, profile: ctx.profile.profile, ...opts,
     launch: async (prompt) => {
-      const where = prefs.get('claudeIn') || 'side';
+      // A popped-out window's terminals would have nowhere to show: Claude opens in Windows Terminal there.
+      const where = windowNumber ? 'external' : prefs.get('claudeIn') || 'side';
       if (where === 'external') return call('claude', '', prompt);
       const session = await terminals.open('claude', { prompt, title: 'Claude', show: where !== 'side' });
       if (where === 'side') split.openTerminal(session);
@@ -116,6 +182,7 @@ export function initDesktop(ctx) {
       const idx = await indexNotesFolder();
       useLocalDb(idx.files);
       store.reload(idx.files['manifest.json']);
+      backlinks.set(idx.links);
       search.reset();
       reader._cache.clear();
       reader._pathSet = null;
@@ -269,7 +336,18 @@ export function initDesktop(ctx) {
     const isDir = id > 0 && store.kind[id] === 0;
     const name = await askName({ title: isDir ? 'Rename folder' : 'Rename', value: nameOf(path), action: 'Rename', selectBase: !isDir });
     if (!name || name === nameOf(path)) return;
-    const to = join(parentOf(path), name);
+    await moveTo(path, join(parentOf(path), name));
+  }
+
+  /** A note (or any page) in a window of its own: a second view of the library. */
+  async function openWindow(path = '', anchor = '') {
+    if (!hasFeature('windows')) return;
+    try { await call('openWindow', toHash(path, anchor)); } catch (err) { failed('Could not open a new window')(err); }
+  }
+
+  /** Rename or move a note or folder; what PaperNotes remembers about it
+   *  (stickies, marks, tags, open tabs) goes with it. */
+  async function moveTo(path, to) {
     if (editor.active && (editor.path === path || editor.path.startsWith(`${path}/`))) {
       if (!(await editor.close())) return;
     }
@@ -282,7 +360,9 @@ export function initDesktop(ctx) {
       const current = router.current.path;
       await refresh();
       if (current === path || current.startsWith(`${path}/`)) router.go(to + current.slice(path.length), { replace: true });
-    } catch (err) { failed('Could not rename it')(err); }
+      const id = await store.resolvePath(to);
+      if (id > 0) await tree.reveal(id, { select: false });
+    } catch (err) { failed(parentOf(path) === parentOf(to) ? 'Could not rename it' : 'Could not move it')(err); }
   }
 
   async function trash(path) {
@@ -318,7 +398,7 @@ export function initDesktop(ctx) {
     const items = [];
     if (path) {
       items.push({ id: M.OPEN, label: isDir ? 'Open' : 'Open here' }, { id: M.NEW_TAB, label: 'Open in new tab\tCtrl+Click' },
-        { id: M.SIDE, label: 'Open to the side\tAlt+Click' });
+        ...(hasFeature('windows') ? [{ id: M.NEW_WINDOW, label: 'Open in new window' }] : []), { id: M.SIDE, label: 'Open to the side\tAlt+Click' });
       if (isNote) items.push({ id: M.EDIT, label: 'Edit\tCtrl+E' });
       if (!isDir) items.push({ id: M.OPEN_APP, label: 'Open in its Windows app' });
       items.push({ id: M.REVEAL, label: 'Show in folder' }, '-');
@@ -348,6 +428,7 @@ export function initDesktop(ctx) {
     switch (chosen) {
       case M.OPEN: router.go(path); break;
       case M.NEW_TAB: tabs.open(path, { activate: true }); break;
+      case M.NEW_WINDOW: openWindow(path); break;
       case M.EDIT: editPath(path); break;
       case M.OPEN_APP: call('open', path).catch(failed('Could not open it')); break;
       case M.REVEAL: call('reveal', path).catch(failed('Could not show it')); break;
@@ -473,6 +554,9 @@ export function initDesktop(ctx) {
     },
     claude,
     editPath,
+    openWindow,
+    hasFeature,
+    myNotesFolder,
     /** Everything that isn't on disk yet, written now (before an update). */
     async saveAll() {
       if (editor.active) await editor.save();

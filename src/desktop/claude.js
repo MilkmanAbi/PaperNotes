@@ -20,7 +20,7 @@ const HANDOFF = '.papernotes/claude/handoff.md';
 
 /**
  * Write the hand-off and start Claude with it.
- * task: '' (study), 'cards' (make flashcards), 'plan' (plan my week)
+ * task: '' (study), 'cards' (make flashcards), 'plan' (plan my week), 'code' (coding beside VS Code)
  * quote: text the user selected and asked about
  * launch(prompt): where Claude runs (side pane, panel or Windows Terminal)
  */
@@ -107,6 +107,10 @@ export async function studyWithClaude({ path, state, store, info, toasts, profil
         : 'Explain what I selected with a worked example (numbers if it is maths), then check I got it with one short question.';
     lines.push(`- ${how}`);
     lines.push('- Keep it short. Then offer to make a flashcard of it with papernotes_add_flashcards.');
+  } else if (task === 'code') {
+    lines.push('- I am writing code in VS Code for the web (vscode.dev), in a PaperNotes tab right next to you. Help me write, explain and debug it; I will paste code or errors here.');
+    lines.push('- Keep answers short and runnable, with the language on every code block.');
+    lines.push('- When code is worth keeping, offer to save it as a note in `My notes/` with `papernotes_write_note`: a `#` title, one line on what it does, then the code in a fenced block with its language.');
   } else if (task === 'plan') {
     lines.push('- Look at my reminders, confused spots, progress and timetable (the `papernotes_overview` and `papernotes_profile` tools) and plan my study for the next few days. Add the plan as reminders with times.');
   } else {
@@ -125,6 +129,8 @@ export async function studyWithClaude({ path, state, store, info, toasts, profil
       ? `Read .papernotes/claude/handoff.md and make flashcards from${subject || ' my notes'} as it says.`
       : task === 'plan'
         ? 'Read .papernotes/claude/handoff.md and plan my study as it says.'
+      : task === 'code'
+        ? 'Read .papernotes/claude/handoff.md: I am coding next to you in VS Code for the web, as that file says. Ask me what I am working on.'
         : path
           ? `Read .papernotes/claude/handoff.md. I am studying${subject} in PaperNotes and want your help. Follow the instructions in that file.`
           : 'Read .papernotes/claude/handoff.md. It has my PaperNotes reminders and confused spots. Help me decide what to study first, then help me study it.';

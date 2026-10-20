@@ -83,6 +83,37 @@ static std::thread g_watcher;
 static std::atomic<bool> g_watchStop{false};
 static HANDLE g_watchDir = INVALID_HANDLE_VALUE;
 
+// ── more than one window ────────────────────────────────────────────────
+// A tab can pop out into a window of its own, and a tab can hold a website
+// (VS Code for the web) in a WebView of its own. A popped-out page numbers
+// its requests from <window> × 10^9, so every reply, even a late one from a
+// worker thread, finds the page that asked.
+struct AppWindow {
+    HWND hwnd = nullptr;
+    ComPtr<ICoreWebView2Controller> ctl;
+    ComPtr<ICoreWebView2> view;
+    bool dirty = false;
+    std::wstring dirtyName;
+};
+static std::map<int, AppWindow> g_wins;      // window number (1, 2, …) -> its window
+static int g_winSeq = 0;
+static const long long kWinIds = 1000000000LL;
+static const wchar_t* kPopClass = L"PaperNotesPopWindow";
+static HWND g_cmdHwnd = nullptr;             // the window whose page sent the command being handled
+static int WindowOfId(const std::wstring& id) { return (int)(_wtoll(id.c_str()) / kWinIds); }
+
+// A website in a tab: a WebView of its own, a child of the main window,
+// placed over the tab by the page. It has no line to the host.
+struct WebPane {
+    HWND box = nullptr;   // its own child window, kept above the app's page
+    ComPtr<ICoreWebView2Controller> ctl;
+    ComPtr<ICoreWebView2> view;
+    RECT bounds{};
+    bool visible = false;
+};
+static const wchar_t* kPaneClass = L"PaperNotesWebPane";
+static std::map<std::wstring, WebPane> g_panes;   // the tab's key -> its website
+
 // ── strings ─────────────────────────────────────────────────────────────
 static std::wstring Widen(const std::string& s) {
     if (s.empty()) return {};
@@ -220,9 +251,19 @@ static bool IsOwn(const std::wstring& full) {
 static void Post(const std::wstring& json) {
     if (g_view) g_view->PostWebMessageAsJson(json.c_str());
 }
+// Events every window should hear (the notes changed on disk).
+static void PostAll(const std::wstring& json) {
+    Post(json);
+    for (auto& [n, w] : g_wins)
+        if (w.view) w.view->PostWebMessageAsJson(json.c_str());
+}
 static void Reply(const std::wstring& id, bool ok, const std::wstring& resultJson) {
-    Post(L"{\"id\":" + id + L",\"ok\":" + (ok ? L"true" : L"false") + L"," +
-         (ok ? L"\"result\":" + resultJson : L"\"error\":" + resultJson) + L"}");
+    std::wstring json = L"{\"id\":" + id + L",\"ok\":" + (ok ? L"true" : L"false") + L"," +
+                        (ok ? L"\"result\":" + resultJson : L"\"error\":" + resultJson) + L"}";
+    int w = WindowOfId(id);
+    if (!w) { Post(json); return; }
+    auto it = g_wins.find(w);
+    if (it != g_wins.end() && it->second.view) it->second.view->PostWebMessageAsJson(json.c_str());
 }
 
 // ── serving ─────────────────────────────────────────────────────────────
@@ -1090,11 +1131,11 @@ static std::wstring MusicDir() {
     return d;
 }
 
-static void ApplyChrome(bool dark, COLORREF caption, COLORREF text) {
+static void ApplyChrome(HWND hwnd, bool dark, COLORREF caption, COLORREF text) {
     BOOL d = dark;
-    DwmSetWindowAttribute(g_hwnd, 20 /* DWMWA_USE_IMMERSIVE_DARK_MODE */, &d, sizeof(d));
-    DwmSetWindowAttribute(g_hwnd, 35 /* DWMWA_CAPTION_COLOR */, &caption, sizeof(caption));
-    DwmSetWindowAttribute(g_hwnd, 36 /* DWMWA_TEXT_COLOR */, &text, sizeof(text));
+    DwmSetWindowAttribute(hwnd, 20 /* DWMWA_USE_IMMERSIVE_DARK_MODE */, &d, sizeof(d));
+    DwmSetWindowAttribute(hwnd, 35 /* DWMWA_CAPTION_COLOR */, &caption, sizeof(caption));
+    DwmSetWindowAttribute(hwnd, 36 /* DWMWA_TEXT_COLOR */, &text, sizeof(text));
     // Context menus follow the page's theme rather than the system's.
     typedef int(WINAPI * SetPreferredAppModeFn)(int);
     typedef void(WINAPI * FlushMenuThemesFn)();
@@ -1194,6 +1235,217 @@ static std::wstring Sha256File(const std::wstring& path) {
     return out;
 }
 
+// ── windows popped out of the main one ──────────────────────────────────
+static void SetupAppView(ComPtr<ICoreWebView2> view, HWND owner);
+
+static AppWindow* WindowOfHwnd(HWND h) {
+    for (auto& [n, w] : g_wins)
+        if (w.hwnd == h) return &w;
+    return nullptr;
+}
+
+static LRESULT CALLBACK PopProc(HWND h, UINT msg, WPARAM w, LPARAM l) {
+    AppWindow* self = WindowOfHwnd(h);
+    switch (msg) {
+        case WM_SIZE:
+            if (self && self->ctl) {
+                RECT rc;
+                GetClientRect(h, &rc);
+                self->ctl->put_Bounds(rc);
+            }
+            return 0;
+        case WM_MOVE:
+        case WM_MOVING:
+            if (self && self->ctl) self->ctl->NotifyParentWindowPositionChanged();
+            return 0;
+        case WM_SETFOCUS:
+            if (self && self->ctl) self->ctl->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
+            return 0;
+        case WM_GETMINMAXINFO: {
+            UINT dpi = GetDpiForWindow(h);
+            auto* mm = (MINMAXINFO*)l;
+            mm->ptMinTrackSize = {MulDiv(420, dpi, 96), MulDiv(320, dpi, 96)};
+            return 0;
+        }
+        case WM_CLOSE:
+            // Unsaved work in this window's editor: the same question as the main window asks.
+            if (self && self->dirty && self->view) {
+                int r = Ask(L"Save your changes to “" + self->dirtyName + L"”?", L"If you don't save, the changes are lost.",
+                            {{100, L"Save"}, {101, L"Don't save"}, {IDCANCEL, L"Cancel"}}, TD_INFORMATION_ICON);
+                if (r == 100) { self->view->PostWebMessageAsJson(L"{\"event\":\"save-then-quit\"}"); return 0; }
+                if (r != 101) return 0;
+            }
+            DestroyWindow(h);
+            return 0;
+        case WM_DESTROY:
+            for (auto it = g_wins.begin(); it != g_wins.end(); ++it) {
+                if (it->second.hwnd != h) continue;
+                if (it->second.ctl) it->second.ctl->Close();
+                g_wins.erase(it);
+                break;
+            }
+            return 0;
+    }
+    return DefWindowProcW(h, msg, w, l);
+}
+
+/** A new window showing `hash` (a route like "#/My notes/Week 3.md"). */
+static bool OpenWindow(const std::wstring& hash) {
+    if (!g_env) return false;
+    const int n = ++g_winSeq;
+    RECT r;
+    GetWindowRect(g_hwnd, &r);
+    int ww = std::max(720, (int)(r.right - r.left) * 6 / 10), wh = std::max(520, (int)(r.bottom - r.top) * 85 / 100);
+    int off = 40 * (1 + (int)g_wins.size() % 6);
+    HWND h = CreateWindowExW(0, kPopClass, L"PaperNotes", WS_OVERLAPPEDWINDOW, r.left + off, r.top + off, ww, wh,
+                             nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
+    if (!h) return false;
+    BOOL dark = RegGetDword(L"Dark", 0);
+    COLORREF cap = RegGetDword(L"Caption", RGB(0xEF, 0xEB, 0xE4));
+    DwmSetWindowAttribute(h, 20, &dark, sizeof(dark));
+    DwmSetWindowAttribute(h, 35, &cap, sizeof(cap));
+    g_wins[n].hwnd = h;
+    ShowWindow(h, SW_SHOWNORMAL);
+    std::wstring url = std::wstring(kOrigin) + L"index.html?window=" + std::to_wstring(n) + (hash.rfind(L"#", 0) == 0 ? hash : L"");
+    g_env->CreateCoreWebView2Controller(
+        h, Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
+               [n, url, cap](HRESULT hr, ICoreWebView2Controller* ctl) -> HRESULT {
+                   auto it = g_wins.find(n);
+                   if (FAILED(hr) || !ctl || it == g_wins.end()) return S_OK;
+                   AppWindow& w = it->second;
+                   w.ctl = ctl;
+                   ctl->get_CoreWebView2(&w.view);
+                   ComPtr<ICoreWebView2Controller2> ctl2;
+                   if (SUCCEEDED(ctl->QueryInterface(IID_PPV_ARGS(&ctl2))))
+                       ctl2->put_DefaultBackgroundColor({255, GetRValue(cap), GetGValue(cap), GetBValue(cap)});
+                   RECT rc;
+                   GetClientRect(w.hwnd, &rc);
+                   ctl->put_Bounds(rc);
+                   SetupAppView(w.view, w.hwnd);
+                   w.view->Navigate(url.c_str());
+                   return S_OK;
+               }).Get());
+    return true;
+}
+
+// ── websites in tabs ────────────────────────────────────────────────────
+/** Every child of the main window clips its siblings, so the one on top
+ *  (a website, when its tab is showing) is what you see. */
+static void ClipSiblings() {
+    for (HWND c = GetWindow(g_hwnd, GW_CHILD); c; c = GetWindow(c, GW_HWNDNEXT)) {
+        LONG_PTR st = GetWindowLongPtrW(c, GWL_STYLE);
+        if (!(st & WS_CLIPSIBLINGS)) SetWindowLongPtrW(c, GWL_STYLE, st | WS_CLIPSIBLINGS);
+    }
+}
+
+static void PaneApply(WebPane& p) {
+    if (!p.box) return;
+    if (p.visible) {
+        // Its own window, raised above the page's: two WebViews in one window
+        // are siblings, and the later one is not always drawn on top.
+        int w = p.bounds.right - p.bounds.left, h = p.bounds.bottom - p.bounds.top;
+        SetWindowPos(p.box, HWND_TOP, p.bounds.left, p.bounds.top, w, h, SWP_SHOWWINDOW | SWP_NOACTIVATE);
+        if (p.ctl) { p.ctl->put_Bounds({0, 0, w, h}); p.ctl->put_IsVisible(TRUE); }
+    } else {
+        if (p.ctl) p.ctl->put_IsVisible(FALSE);
+        ShowWindow(p.box, SW_HIDE);
+    }
+}
+
+/** Tell the page where its website is now: address, title, back/forward. */
+static void PaneReport(const std::wstring& key) {
+    auto it = g_panes.find(key);
+    if (it == g_panes.end() || !it->second.view) return;
+    auto& v = it->second.view;
+    LPWSTR u = nullptr, t = nullptr;
+    v->get_Source(&u);
+    v->get_DocumentTitle(&t);
+    BOOL back = FALSE, fwd = FALSE;
+    v->get_CanGoBack(&back);
+    v->get_CanGoForward(&fwd);
+    Post(L"{\"event\":\"web\",\"key\":" + Json(key) + L",\"url\":" + Json(u ? u : L"") + L",\"title\":" + Json(t ? t : L"") +
+         L",\"back\":" + (back ? L"true" : L"false") + L",\"forward\":" + (fwd ? L"true" : L"false") + L"}");
+    CoTaskMemFree(u);
+    CoTaskMemFree(t);
+}
+
+static bool PaneOpen(const std::wstring& key, const std::wstring& url) {
+    if (!g_env) return false;
+    auto existing = g_panes.find(key);
+    if (existing != g_panes.end()) {
+        if (existing->second.view) existing->second.view->Navigate(url.c_str());
+        return true;
+    }
+    HWND box = CreateWindowExW(0, kPaneClass, L"", WS_CHILD | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, 0, 0, 0, 0, g_hwnd,
+                               nullptr, GetModuleHandleW(nullptr), nullptr);
+    if (!box) return false;
+    g_panes[key] = WebPane{};
+    g_panes[key].box = box;
+    ClipSiblings();
+    HRESULT hr = g_env->CreateCoreWebView2Controller(
+        box, Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
+                    [key, url](HRESULT hr, ICoreWebView2Controller* ctl) -> HRESULT {
+                        auto it = g_panes.find(key);
+                        if (it == g_panes.end()) { if (ctl) ctl->Close(); return S_OK; }   // closed before it was ready
+                        if (FAILED(hr) || !ctl) { DestroyWindow(it->second.box); g_panes.erase(it); return S_OK; }
+                        WebPane& p = it->second;
+                        p.ctl = ctl;
+                        ctl->get_CoreWebView2(&p.view);
+                        ComPtr<ICoreWebView2Settings> s;
+                        p.view->get_Settings(&s);
+                        s->put_AreDevToolsEnabled(g_dev);
+                        s->put_IsStatusBarEnabled(FALSE);
+                        // Keys belong to the site (VS Code wants Ctrl+P, Ctrl+Shift+P, F5…).
+                        ComPtr<ICoreWebView2Settings3> s3;
+                        if (SUCCEEDED(s.As(&s3))) s3->put_AreBrowserAcceleratorKeysEnabled(FALSE);
+                        EventRegistrationToken t;
+                        auto report = Callback<ICoreWebView2SourceChangedEventHandler>(
+                            [key](ICoreWebView2*, ICoreWebView2SourceChangedEventArgs*) -> HRESULT { PaneReport(key); return S_OK; });
+                        p.view->add_SourceChanged(report.Get(), &t);
+                        p.view->add_DocumentTitleChanged(
+                            Callback<ICoreWebView2DocumentTitleChangedEventHandler>(
+                                [key](ICoreWebView2*, IUnknown*) -> HRESULT { PaneReport(key); return S_OK; }).Get(), &t);
+                        p.view->add_HistoryChanged(
+                            Callback<ICoreWebView2HistoryChangedEventHandler>(
+                                [key](ICoreWebView2*, IUnknown*) -> HRESULT { PaneReport(key); return S_OK; }).Get(), &t);
+                        PaneApply(p);
+                        p.view->Navigate(url.c_str());
+                        return S_OK;
+                    }).Get());
+    if (FAILED(hr)) { DestroyWindow(box); g_panes.erase(key); return false; }
+    return true;
+}
+
+// ── dragging a file out ─────────────────────────────────────────────────
+/** The file as Explorer itself would drag it (so its icon and every drop
+ *  target work), offered as a copy only, plus `text` for places that take
+ *  text, like an editor. Runs until the drop; returns what happened. */
+static DWORD DragOut(const std::wstring& full, const std::wstring& text) {
+    PIDLIST_ABSOLUTE pidl = ILCreateFromPathW(full.c_str());
+    if (!pidl) return DROPEFFECT_NONE;
+    ComPtr<IShellItem> item;
+    HRESULT hr = SHCreateItemFromIDList(pidl, IID_PPV_ARGS(&item));
+    ILFree(pidl);
+    ComPtr<IDataObject> data;
+    if (SUCCEEDED(hr)) hr = item->BindToHandler(nullptr, BHID_DataObject, IID_PPV_ARGS(&data));
+    if (FAILED(hr) || !data) return DROPEFFECT_NONE;
+    if (!text.empty()) {
+        size_t bytes = (text.size() + 1) * sizeof(wchar_t);
+        if (HGLOBAL g = GlobalAlloc(GMEM_MOVEABLE, bytes)) {
+            memcpy(GlobalLock(g), text.c_str(), bytes);
+            GlobalUnlock(g);
+            FORMATETC fe{CF_UNICODETEXT, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
+            STGMEDIUM sm{};
+            sm.tymed = TYMED_HGLOBAL;
+            sm.hGlobal = g;
+            if (FAILED(data->SetData(&fe, &sm, TRUE))) GlobalFree(g);
+        }
+    }
+    DWORD effect = DROPEFFECT_NONE;
+    SHDoDragDrop(g_cmdHwnd ? g_cmdHwnd : g_hwnd, data.Get(), nullptr, DROPEFFECT_COPY | DROPEFFECT_LINK, &effect);
+    return effect;
+}
+
 static void Command(const std::wstring& message) {
     auto a = Split(message, L'\x1F');
     if (a.size() < 2) return;
@@ -1202,6 +1454,15 @@ static void Command(const std::wstring& message) {
     auto arg = [&](size_t i) -> std::wstring { return i + 2 < a.size() ? a[i + 2] : L""; };
     auto fail = [&](const std::wstring& why) { Reply(id, false, Json(why)); };
     auto done = [&](const std::wstring& json = L"true") { Reply(id, true, json); };
+    // Which window asked: the main one, or one popped out of it.
+    const int win = WindowOfId(id);
+    AppWindow* popped = nullptr;
+    if (win) {
+        auto it = g_wins.find(win);
+        if (it == g_wins.end()) return;
+        popped = &it->second;
+    }
+    g_cmdHwnd = popped ? popped->hwnd : g_hwnd;
     auto notePath = [&](size_t i, std::wstring& out) -> bool {
         if (g_notesDir.empty() || !Resolve(g_notesDir, arg(i), out)) { fail(L"That path is outside the study folder."); return false; }
         return true;
@@ -1218,7 +1479,8 @@ static void Command(const std::wstring& message) {
         std::wstring missing = RegGetString(L"NotesFolder");
         if (!missing.empty() && Exists(missing)) missing.clear();
         done(L"{\"version\":" + Json(kVersion) + L",\"notesDir\":" + Json(g_notesDir) + L",\"suggested\":" + Json(suggested) +
-             L",\"missing\":" + Json(missing) + L",\"docs\":" + Json(DocsDir()) + L",\"empty\":" + (LibraryEmpty() ? L"true" : L"false") + L",\"dev\":" + (g_dev ? L"true" : L"false") + L"}");
+             L",\"missing\":" + Json(missing) + L",\"docs\":" + Json(DocsDir()) + L",\"empty\":" + (LibraryEmpty() ? L"true" : L"false") + L",\"dev\":" + (g_dev ? L"true" : L"false") +
+             L",\"window\":" + std::to_wstring(win) + L",\"features\":[\"windows\",\"web\",\"dragOut\"]}");
     } else if (cmd == L"scan") {
         std::wstring files, side;
         if (!g_notesDir.empty()) ScanInto(g_notesDir, files, false, false);
@@ -1630,7 +1892,7 @@ static void Command(const std::wstring& message) {
         POINT pt;
         int x = _wtoi(arg(0).c_str()), y = _wtoi(arg(1).c_str());
         if (x < 0 || y < 0) GetCursorPos(&pt);
-        else { pt = {x, y}; ClientToScreen(g_hwnd, &pt); }
+        else { pt = {x, y}; ClientToScreen(g_cmdHwnd, &pt); }
         HMENU m = CreatePopupMenu();
         std::map<int, HMENU> subs;
         for (size_t i = 4; i < a.size(); i++) {
@@ -1650,20 +1912,72 @@ static void Command(const std::wstring& message) {
             if (flags.find(L'c') != std::wstring::npos) f |= MF_CHECKED;
             AppendMenuW(into, f, _wtoi(it[0].c_str()), it.size() > 1 ? it[1].c_str() : L"");
         }
-        SetForegroundWindow(g_hwnd);
-        int chosen = TrackPopupMenuEx(m, TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_NONOTIFY, pt.x, pt.y, g_hwnd, nullptr);
+        SetForegroundWindow(g_cmdHwnd);
+        int chosen = TrackPopupMenuEx(m, TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_NONOTIFY, pt.x, pt.y, g_cmdHwnd, nullptr);
         DestroyMenu(m);
         done(std::to_wstring(chosen));
     } else if (cmd == L"chrome") {
         bool dark = arg(0) == L"1";
         COLORREF cap = RGB(_wtoi(arg(1).c_str()), _wtoi(arg(2).c_str()), _wtoi(arg(3).c_str()));
         COLORREF txt = RGB(_wtoi(arg(4).c_str()), _wtoi(arg(5).c_str()), _wtoi(arg(6).c_str()));
-        ApplyChrome(dark, cap, txt);
+        ApplyChrome(g_cmdHwnd, dark, cap, txt);
         done();
     } else if (cmd == L"dirty") {
-        g_dirty = arg(0) == L"1";
-        g_dirtyName = arg(1);
+        // Unsaved work in the main window, or in a popped-out one.
+        if (popped) { popped->dirty = arg(0) == L"1"; popped->dirtyName = arg(1); }
+        else { g_dirty = arg(0) == L"1"; g_dirtyName = arg(1); }
         done();
+    } else if (cmd == L"quit" && popped) {
+        // From a popped-out window: close that window, not PaperNotes.
+        popped->dirty = false;
+        PostMessageW(popped->hwnd, WM_CLOSE, 0, 0);
+        done();
+    } else if (cmd == L"openWindow") {
+        if (!OpenWindow(arg(0))) return fail(L"The window could not be opened.");
+        done();
+    } else if (cmd == L"webOpen") {
+        // A website in a tab (main window only): https only, nothing local.
+        if (popped) return fail(L"Websites open in the main window.");
+        if (arg(1).rfind(L"https://", 0) != 0) return fail(L"Only https:// websites can open here.");
+        if (!PaneOpen(arg(0), arg(1))) return fail(L"The website could not be opened.");
+        done();
+    } else if (cmd == L"webPlace") {
+        // x, y, width, height in the window's pixels; a width of 0 hides it.
+        auto it = g_panes.find(arg(0));
+        if (it == g_panes.end()) return fail(L"No such website tab.");
+        int x = _wtoi(arg(1).c_str()), y = _wtoi(arg(2).c_str()), w = _wtoi(arg(3).c_str()), hgt = _wtoi(arg(4).c_str());
+        it->second.visible = w > 0 && hgt > 0;
+        if (it->second.visible) it->second.bounds = {x, y, x + w, y + hgt};
+        PaneApply(it->second);
+        done();
+    } else if (cmd == L"webGo") {
+        auto it = g_panes.find(arg(0));
+        if (it == g_panes.end() || !it->second.view) return fail(L"No such website tab.");
+        auto& v = it->second.view;
+        const std::wstring& to = arg(1);
+        if (to == L"back") v->GoBack();
+        else if (to == L"forward") v->GoForward();
+        else if (to == L"reload") v->Reload();
+        else if (to.rfind(L"https://", 0) == 0) v->Navigate(to.c_str());
+        else return fail(L"Only https:// websites can open here.");
+        done();
+    } else if (cmd == L"webClose") {
+        auto it = g_panes.find(arg(0));
+        if (it != g_panes.end()) {
+            if (it->second.ctl) it->second.ctl->Close();
+            if (it->second.box) DestroyWindow(it->second.box);
+            g_panes.erase(it);
+        }
+        done();
+    } else if (cmd == L"dragOut") {
+        // Drag a note or file out of PaperNotes, onto the desktop or into
+        // Explorer: always a copy, so nothing leaves the study folder. The page
+        // started this from a drag; Windows takes it from here until the drop.
+        std::wstring full;
+        if (!notePath(0, full)) return;
+        if (!Exists(full)) return fail(L"It isn't there any more.");
+        DWORD effect = DragOut(full, arg(1));
+        done(effect & DROPEFFECT_COPY ? L"\"copy\"" : L"\"none\"");
     } else if (cmd == L"quit") {
         g_quitting = true;
         PostMessageW(g_hwnd, WM_CLOSE, 0, 0);
@@ -1732,7 +2046,7 @@ static void FlushChanges() {
         if (n > 200) { overflow = true; break; }
     }
     if (!n && !overflow) return;
-    Post(L"{\"event\":\"changed\",\"overflow\":" + std::wstring(overflow ? L"true" : L"false") + L",\"paths\":[" + json + L"]}");
+    PostAll(L"{\"event\":\"changed\",\"overflow\":" + std::wstring(overflow ? L"true" : L"false") + L",\"paths\":[" + json + L"]}");
 }
 
 // ── window ──────────────────────────────────────────────────────────────
@@ -1756,6 +2070,113 @@ static void RestorePlacement(int show) {
         }
     }
     ShowWindow(g_hwnd, show);
+}
+
+// Everything a PaperNotes page needs from its WebView, the main window's
+// and every window opened from it: the app and the notes served from one
+// origin, the line to the host, and nothing that can leave the app.
+static void SetupAppView(ComPtr<ICoreWebView2> view, HWND owner) {
+    ComPtr<ICoreWebView2Settings> s;
+    view->get_Settings(&s);
+    s->put_AreDevToolsEnabled(g_dev);
+    s->put_IsStatusBarEnabled(FALSE);
+    s->put_AreDefaultContextMenusEnabled(TRUE);
+    ComPtr<ICoreWebView2Settings3> s3;
+    if (SUCCEEDED(s.As(&s3))) s3->put_AreBrowserAcceleratorKeysEnabled(g_dev);
+    ComPtr<ICoreWebView2Settings4> s4;
+    if (SUCCEEDED(s.As(&s4))) { s4->put_IsGeneralAutofillEnabled(FALSE); s4->put_IsPasswordAutosaveEnabled(FALSE); }
+
+    view->AddWebResourceRequestedFilter((std::wstring(kOrigin) + L"*").c_str(),
+                                          COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
+    EventRegistrationToken t;
+    view->add_WebResourceRequested(
+        Callback<ICoreWebView2WebResourceRequestedEventHandler>(
+            [](ICoreWebView2*, ICoreWebView2WebResourceRequestedEventArgs* args) -> HRESULT {
+                Serve(args);
+                return S_OK;
+            }).Get(), &t);
+
+    // Anything that tries to leave the app opens in the browser instead.
+    view->add_NavigationStarting(
+        Callback<ICoreWebView2NavigationStartingEventHandler>(
+            [](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs* args) -> HRESULT {
+                LPWSTR u = nullptr;
+                args->get_Uri(&u);
+                std::wstring url = u ? u : L"";
+                CoTaskMemFree(u);
+                if (url.rfind(kOrigin, 0) != 0) {
+                    args->put_Cancel(TRUE);
+                    if (url.rfind(L"http", 0) == 0 || url.rfind(L"mailto:", 0) == 0)
+                        ShellExecuteW(g_hwnd, nullptr, url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                }
+                return S_OK;
+            }).Get(), &t);
+    view->add_NewWindowRequested(
+        Callback<ICoreWebView2NewWindowRequestedEventHandler>(
+            [](ICoreWebView2*, ICoreWebView2NewWindowRequestedEventArgs* args) -> HRESULT {
+                args->put_Handled(TRUE);
+                LPWSTR u = nullptr;
+                args->get_Uri(&u);
+                std::wstring url = u ? u : L"";
+                CoTaskMemFree(u);
+                std::wstring content = std::wstring(kOrigin) + L"content/";
+                if (url.rfind(content, 0) == 0) {
+                    // A note's own file link: open it the Windows way.
+                    std::wstring rel = url.substr(content.size()), full;
+                    size_t cut = rel.find_first_of(L"?#");
+                    if (cut != std::wstring::npos) rel.resize(cut);
+                    if (Resolve(g_notesDir, PercentDecode(rel), full) && Exists(full))
+                        ShellExecuteW(g_hwnd, nullptr, ShellPath(full).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                } else if (url.rfind(L"http", 0) == 0 || url.rfind(L"mailto:", 0) == 0) {
+                    ShellExecuteW(g_hwnd, nullptr, url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                }
+                return S_OK;
+            }).Get(), &t);
+    // Saved Brightspace pages sit in iframes; their links leave the same way.
+    view->add_FrameNavigationStarting(
+        Callback<ICoreWebView2NavigationStartingEventHandler>(
+            [](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs* args) -> HRESULT {
+                LPWSTR u = nullptr;
+                args->get_Uri(&u);
+                std::wstring url = u ? u : L"";
+                CoTaskMemFree(u);
+                if (url.rfind(kOrigin, 0) != 0 && url.rfind(L"about:", 0) != 0) {
+                    args->put_Cancel(TRUE);
+                    if (url.rfind(L"http", 0) == 0)
+                        ShellExecuteW(g_hwnd, nullptr, url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                }
+                return S_OK;
+            }).Get(), &t);
+    view->add_WebMessageReceived(
+        Callback<ICoreWebView2WebMessageReceivedEventHandler>(
+            [](ICoreWebView2*, ICoreWebView2WebMessageReceivedEventArgs* args) -> HRESULT {
+                LPWSTR m = nullptr;
+                if (SUCCEEDED(args->TryGetWebMessageAsString(&m)) && m) {
+                    std::wstring msg = m;
+                    CoTaskMemFree(m);
+                    Command(msg);
+                }
+                return S_OK;
+            }).Get(), &t);
+    view->add_DocumentTitleChanged(
+        Callback<ICoreWebView2DocumentTitleChangedEventHandler>(
+            [owner](ICoreWebView2* v, IUnknown*) -> HRESULT {
+                LPWSTR title = nullptr;
+                v->get_DocumentTitle(&title);
+                if (title && *title) SetWindowTextW(owner, title);
+                CoTaskMemFree(title);
+                return S_OK;
+            }).Get(), &t);
+    // Downloads would land in Downloads with no way back; the page
+    // offers "Open" and "Show in folder" instead.
+    ComPtr<ICoreWebView2_4> v4;
+    if (SUCCEEDED(view.As(&v4)))
+        v4->add_DownloadStarting(
+            Callback<ICoreWebView2DownloadStartingEventHandler>(
+                [](ICoreWebView2*, ICoreWebView2DownloadStartingEventArgs* args) -> HRESULT {
+                    args->put_Cancel(TRUE);
+                    return S_OK;
+                }).Get(), &t);
 }
 
 static void CreateWebView() {
@@ -1789,107 +2210,7 @@ static void CreateWebView() {
                                     GetClientRect(g_hwnd, &rc);
                                     ctl->put_Bounds(rc);
 
-                                    ComPtr<ICoreWebView2Settings> s;
-                                    g_view->get_Settings(&s);
-                                    s->put_AreDevToolsEnabled(g_dev);
-                                    s->put_IsStatusBarEnabled(FALSE);
-                                    s->put_AreDefaultContextMenusEnabled(TRUE);
-                                    ComPtr<ICoreWebView2Settings3> s3;
-                                    if (SUCCEEDED(s.As(&s3))) s3->put_AreBrowserAcceleratorKeysEnabled(g_dev);
-                                    ComPtr<ICoreWebView2Settings4> s4;
-                                    if (SUCCEEDED(s.As(&s4))) { s4->put_IsGeneralAutofillEnabled(FALSE); s4->put_IsPasswordAutosaveEnabled(FALSE); }
-
-                                    g_view->AddWebResourceRequestedFilter((std::wstring(kOrigin) + L"*").c_str(),
-                                                                          COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
-                                    EventRegistrationToken t;
-                                    g_view->add_WebResourceRequested(
-                                        Callback<ICoreWebView2WebResourceRequestedEventHandler>(
-                                            [](ICoreWebView2*, ICoreWebView2WebResourceRequestedEventArgs* args) -> HRESULT {
-                                                Serve(args);
-                                                return S_OK;
-                                            }).Get(), &t);
-
-                                    // Anything that tries to leave the app opens in the browser instead.
-                                    g_view->add_NavigationStarting(
-                                        Callback<ICoreWebView2NavigationStartingEventHandler>(
-                                            [](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs* args) -> HRESULT {
-                                                LPWSTR u = nullptr;
-                                                args->get_Uri(&u);
-                                                std::wstring url = u ? u : L"";
-                                                CoTaskMemFree(u);
-                                                if (url.rfind(kOrigin, 0) != 0) {
-                                                    args->put_Cancel(TRUE);
-                                                    if (url.rfind(L"http", 0) == 0 || url.rfind(L"mailto:", 0) == 0)
-                                                        ShellExecuteW(g_hwnd, nullptr, url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-                                                }
-                                                return S_OK;
-                                            }).Get(), &t);
-                                    g_view->add_NewWindowRequested(
-                                        Callback<ICoreWebView2NewWindowRequestedEventHandler>(
-                                            [](ICoreWebView2*, ICoreWebView2NewWindowRequestedEventArgs* args) -> HRESULT {
-                                                args->put_Handled(TRUE);
-                                                LPWSTR u = nullptr;
-                                                args->get_Uri(&u);
-                                                std::wstring url = u ? u : L"";
-                                                CoTaskMemFree(u);
-                                                std::wstring content = std::wstring(kOrigin) + L"content/";
-                                                if (url.rfind(content, 0) == 0) {
-                                                    // A note's own file link: open it the Windows way.
-                                                    std::wstring rel = url.substr(content.size()), full;
-                                                    size_t cut = rel.find_first_of(L"?#");
-                                                    if (cut != std::wstring::npos) rel.resize(cut);
-                                                    if (Resolve(g_notesDir, PercentDecode(rel), full) && Exists(full))
-                                                        ShellExecuteW(g_hwnd, nullptr, ShellPath(full).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-                                                } else if (url.rfind(L"http", 0) == 0 || url.rfind(L"mailto:", 0) == 0) {
-                                                    ShellExecuteW(g_hwnd, nullptr, url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-                                                }
-                                                return S_OK;
-                                            }).Get(), &t);
-                                    // Saved Brightspace pages sit in iframes; their links leave the same way.
-                                    g_view->add_FrameNavigationStarting(
-                                        Callback<ICoreWebView2NavigationStartingEventHandler>(
-                                            [](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs* args) -> HRESULT {
-                                                LPWSTR u = nullptr;
-                                                args->get_Uri(&u);
-                                                std::wstring url = u ? u : L"";
-                                                CoTaskMemFree(u);
-                                                if (url.rfind(kOrigin, 0) != 0 && url.rfind(L"about:", 0) != 0) {
-                                                    args->put_Cancel(TRUE);
-                                                    if (url.rfind(L"http", 0) == 0)
-                                                        ShellExecuteW(g_hwnd, nullptr, url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-                                                }
-                                                return S_OK;
-                                            }).Get(), &t);
-                                    g_view->add_WebMessageReceived(
-                                        Callback<ICoreWebView2WebMessageReceivedEventHandler>(
-                                            [](ICoreWebView2*, ICoreWebView2WebMessageReceivedEventArgs* args) -> HRESULT {
-                                                LPWSTR m = nullptr;
-                                                if (SUCCEEDED(args->TryGetWebMessageAsString(&m)) && m) {
-                                                    std::wstring msg = m;
-                                                    CoTaskMemFree(m);
-                                                    Command(msg);
-                                                }
-                                                return S_OK;
-                                            }).Get(), &t);
-                                    g_view->add_DocumentTitleChanged(
-                                        Callback<ICoreWebView2DocumentTitleChangedEventHandler>(
-                                            [](ICoreWebView2* v, IUnknown*) -> HRESULT {
-                                                LPWSTR title = nullptr;
-                                                v->get_DocumentTitle(&title);
-                                                if (title && *title) SetWindowTextW(g_hwnd, title);
-                                                CoTaskMemFree(title);
-                                                return S_OK;
-                                            }).Get(), &t);
-                                    // Downloads would land in Downloads with no way back; the page
-                                    // offers "Open" and "Show in folder" instead.
-                                    ComPtr<ICoreWebView2_4> v4;
-                                    if (SUCCEEDED(g_view.As(&v4)))
-                                        v4->add_DownloadStarting(
-                                            Callback<ICoreWebView2DownloadStartingEventHandler>(
-                                                [](ICoreWebView2*, ICoreWebView2DownloadStartingEventArgs* args) -> HRESULT {
-                                                    args->put_Cancel(TRUE);
-                                                    return S_OK;
-                                                }).Get(), &t);
+                                    SetupAppView(g_view, g_hwnd);
 
                                     g_view->Navigate((std::wstring(kOrigin) + L"index.html").c_str());
                                     StartWatcher();
@@ -1928,6 +2249,8 @@ static LRESULT CALLBACK WndProc(HWND h, UINT msg, WPARAM w, LPARAM l) {
         case WM_MOVE:
         case WM_MOVING:
             if (g_controller) g_controller->NotifyParentWindowPositionChanged();
+            for (auto& [k, pane] : g_panes)
+                if (pane.ctl) pane.ctl->NotifyParentWindowPositionChanged();
             return 0;
         case WM_SETFOCUS:
             if (g_controller) g_controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
@@ -2024,6 +2347,10 @@ static LRESULT CALLBACK WndProc(HWND h, UINT msg, WPARAM w, LPARAM l) {
             TrayRemove();
             PtyKillAll();
             StopWatcher();
+            for (auto& [k, pane] : g_panes)
+                if (pane.ctl) pane.ctl->Close();
+            g_panes.clear();
+            while (!g_wins.empty()) DestroyWindow(g_wins.begin()->second.hwnd);
             if (g_controller) g_controller->Close();
             g_controller.Reset();
             g_view.Reset();
@@ -2054,7 +2381,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmdLine, int show) {
         return 0;
     }
 
-    CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    OleInitialize(nullptr);   // COM as before, plus drag and drop
     INITCOMMONCONTROLSEX icc{sizeof(icc), ICC_STANDARD_CLASSES};
     InitCommonControlsEx(&icc);
 
@@ -2090,6 +2417,17 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmdLine, int show) {
     wc.hbrBackground = CreateSolidBrush(cap);
     wc.lpszClassName = kClass;
     RegisterClassExW(&wc);
+    if (g_dev) kPopClass = L"PaperNotesDevPopWindow";
+    wc.lpfnWndProc = PopProc;
+    wc.lpszClassName = kPopClass;
+    RegisterClassExW(&wc);
+    // The window a website in a tab lives in (no background: the site paints it).
+    WNDCLASSEXW pc{sizeof(pc)};
+    pc.lpfnWndProc = DefWindowProcW;
+    pc.hInstance = inst;
+    pc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+    pc.lpszClassName = kPaneClass;
+    RegisterClassExW(&pc);
 
     // A sensible first size: 80% of the work area, centred.
     RECT wa;

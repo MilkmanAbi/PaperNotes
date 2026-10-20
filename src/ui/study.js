@@ -12,6 +12,7 @@ import { showPopover, closePopover } from './popover.js';
 import { askForm } from './dialog.js';
 import { attachMarks } from './marks.js';
 import { attachStickies } from './stickies.js';
+import { windowNumber } from '../desktop/bridge.js';
 
 /** Files that count towards progress: things you study, not their assets. */
 export const STUDY_KINDS = new Set(['note', 'pdf', 'office', 'notebook']);
@@ -231,6 +232,7 @@ export function initStudy({ state, store, tree, reader, router, toasts, prefs, o
   // Reminders that fall due while the app is open say so (and the desktop
   // app turns it into a Windows notification).
   const notifyDue = () => {
+    if (windowNumber) return;   // the main window says it; a popped-out one would say it twice
     const t = Math.floor(Date.now() / 1000);
     for (const r of state.reminders) {
       if (r.done || !r.due || r.notified || r.due > t) continue;

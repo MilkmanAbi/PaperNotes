@@ -12,6 +12,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+// Colour maths shared with the custom theme, so both derive tokens the same way.
+import { alpha, accentTokens, highlightToken } from '../src/core/colour.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -121,21 +123,10 @@ const PALETTES = [
   },
 ];
 
-// ── colour helpers ─────────────────────────────────────────────────────
-const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
-const toHex = (rgb) => `#${rgb.map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('')}`;
-const mix = (a, b, t) => toHex(hex(a).map((v, i) => v + (hex(b)[i] - v) * t));
-const lum = (h) => {
-  const [r, g, b] = hex(h).map((v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; });
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-};
-const alpha = (h, a) => { const [r, g, b] = hex(h); return `rgb(${r} ${g} ${b} / ${a})`; };
-
 function tokens(v, dark) {
   const [canvas, raised, sunken] = v.bg;
   const [ink, ink2, ink3] = v.fg;
   const [red, orange, yellow, green, blue, purple, cyan] = v.c;
-  const onAccent = lum(v.accent) > 0.36 ? (dark ? canvas : '#111111') : '#ffffff';
   return {
     '--surface-canvas': canvas,
     '--surface-raised': raised,
@@ -144,11 +135,7 @@ function tokens(v, dark) {
     '--ink-primary': ink,
     '--ink-secondary': ink2,
     '--ink-tertiary': ink3,
-    '--ink-on-accent': onAccent,
-    '--accent': v.accent,
-    '--accent-hover': mix(v.accent, dark ? '#ffffff' : '#000000', 0.12),
-    '--accent-muted': alpha(v.accent, dark ? 0.24 : 0.18),
-    '--accent-faint': alpha(v.accent, dark ? 0.1 : 0.07),
+    ...accentTokens(v.accent, dark, canvas),
     '--tone-sage': green,
     '--tone-ochre': yellow,
     '--tone-brick': red,
@@ -173,7 +160,7 @@ function noteTokens(v, dark) {
   return {
     '--n-red': red, '--n-orange': orange, '--n-green': green, '--n-blue': blue,
     '--n-purple': purple, '--n-teal': cyan, '--n-grey': ink3,
-    '--n-hl': alpha(yellow, dark ? 0.32 : 0.45),
+    '--n-hl': highlightToken(yellow, dark),
     '--n-tint': dark ? '13%' : '9%',
   };
 }
