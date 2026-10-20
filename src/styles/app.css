@@ -911,3 +911,16 @@
 .pdfx[data-editable="false"] .pdfx__tools { display: none; }
 .pdfx__hint { white-space: nowrap; }
 @media (max-width: 1100px) { .pdfx__hint { display: none; } }
+
+/* pdf.js's little toolbar on a selected mark: Firefox's viewer gives it a
+   normal font; here it would inherit the page layer's (over 100px), which
+   pushes its icons out of their buttons. Alt text needs a part of Firefox's
+   viewer PaperNotes leaves out. */
+.pdfx .editToolbar { font: 13px/1 var(--font-ui); }
+.pdfx .editToolbar .altText,
+.pdfx .editToolbar .altText + .divider { display: none !important; }   /* pdf.js's own rule loads later */
+
+/* pdf.js reads these two from the page's root (not the reader, where its own
+   stylesheet now lives), to place text boxes and outlines; without them a
+   new text box lands in the page's top-left corner. Same values as pdf.js. */
+:root { --outline-width: 2px; --freetext-padding: 2px; }

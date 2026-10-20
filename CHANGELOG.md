@@ -2,6 +2,14 @@
 
 PaperNotes follows [semantic versioning](https://semver.org). Each `## x.y.z` section below becomes the notes of that GitHub release, and the app shows them in its update panel.
 
+## 2.5.1
+
+Fixes for the PDF reader.
+
+- **Add text** puts the text box where you click again, instead of in the page's top-left corner.
+- **The Highlight button** that pops up when you select text now highlights straight away, without switching tools first.
+- **A selected signature or picture** has a working delete button (its icon was missing) and no more "Alt text" button, which did nothing here.
+
 ## 2.5.0
 
 Mark up your PDFs right inside PaperNotes (ง •̀_•́)ง

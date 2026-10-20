@@ -274,6 +274,22 @@ export async function showPdf(v, { toasts, prefs }) {
   }
   for (const b of root.querySelectorAll('[data-tool]')) b.onclick = () => setTool(current === b.dataset.tool ? 'select' : b.dataset.tool);
 
+  // pdf.js asks for these itself (its Highlight button on selected text, the
+  // colour picker on a selected mark) and waits for the viewer to do them,
+  // which in Firefox is the app around it; here it is this.
+  eventBus.on('switchannotationeditormode', (evt) => { viewer.annotationEditorMode = evt; });
+  eventBus.on('showannotationeditorui', ({ mode }) => { viewer.annotationEditorMode = { mode }; });
+  eventBus.on('switchannotationeditorparams', ({ type, value }) => param(type, value));
+  // A mode pdf.js picked shows on the bar.
+  eventBus.on('annotationeditormodechanged', ({ mode }) => {
+    const id = { [T.HIGHLIGHT]: 'highlight', [T.INK]: 'draw', [T.FREETEXT]: 'text' }[mode];
+    if (!id || id === current) return;
+    current = id;
+    for (const b of root.querySelectorAll('[data-tool]')) b.setAttribute('aria-pressed', String(b.dataset.tool === id));
+    root.dataset.tool = id;
+    showOptions();
+  });
+
   /** A picture (or a signature) on the page in view, ready to move and resize. */
   async function placeImage(file) {
     if (!ui) return;

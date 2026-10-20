@@ -3,7 +3,7 @@
 ; The program only. Your notes live in the study folder you choose when PaperNotes first starts, and
 ; everything PaperNotes remembers about them (tags, done, reminders, stickies, backups) lives inside that
 ; folder, in .papernotes. Upgrading or uninstalling never touches either.
-#define AppVer "2.5.0"
+#define AppVer "2.5.1"
 
 [Setup]
 AppId={{9E5C2B71-4F3A-4D8E-B1C6-2A7F0D9E3B54}
